@@ -16,7 +16,14 @@ import {
 import { Avatar } from "@lab/ui/components/avatar";
 import { Copy } from "@lab/ui/components/copy";
 import { X, Settings, ChevronDown, Users, FolderKanban } from "lucide-react";
-import { Dropdown, DropdownTrigger, DropdownMenu, DropdownItem } from "@lab/ui/components/dropdown";
+import {
+  Dropdown,
+  DropdownTrigger,
+  DropdownMenu,
+  DropdownItem,
+  DropdownSeparator,
+} from "@lab/ui/components/dropdown";
+import { Box } from "lucide-react";
 import type { ReactNode } from "react";
 
 type Project = {
@@ -76,6 +83,17 @@ export default function DemoLayout({ children }: { children: ReactNode }) {
                 </DropdownTrigger>
                 <DropdownMenu>
                   <DropdownItem icon={<Users className="size-3" />}>People</DropdownItem>
+                  <DropdownSeparator />
+                  {projects.map((project) => (
+                    <DropdownItem
+                      key={project.id}
+                      icon={<Box className="size-3" />}
+                      onClick={() => router.push(`/demo/projects/${project.id}/settings`)}
+                    >
+                      {project.name}
+                    </DropdownItem>
+                  ))}
+                  <DropdownSeparator />
                   <DropdownItem
                     icon={<FolderKanban className="size-3" />}
                     onClick={() => router.push("/demo/projects/new")}

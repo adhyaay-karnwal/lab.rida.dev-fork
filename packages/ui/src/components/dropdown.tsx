@@ -148,7 +148,7 @@ export function DropdownItem({ className, icon, children, ...props }: DropdownIt
       type="button"
       role="menuitem"
       className={cn(
-        "flex w-full items-center gap-1.5 px-2 py-1.5 text-xs text-left",
+        "flex w-full items-center gap-1.5 pl-2 pr-4 py-1.5 text-xs text-left",
         "hover:bg-muted focus:bg-muted focus:outline-none",
         "disabled:pointer-events-none disabled:opacity-50",
         className,

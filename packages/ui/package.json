@@ -42,12 +42,14 @@
   "devDependencies": {
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "lucide-react": "^0.511.0",
     "next": "^16",
     "oxfmt": "0.27.0",
     "oxlint": "1.42.0",
     "typescript": "^5"
   },
   "peerDependencies": {
+    "lucide-react": ">=0.400",
     "next": ">=14",
     "react": "^19",
     "react-dom": "^19"

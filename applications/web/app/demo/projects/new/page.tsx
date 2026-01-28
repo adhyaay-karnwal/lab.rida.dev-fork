@@ -1,42 +1,128 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Copy } from "@lab/ui/components/copy";
 import { Heading } from "@lab/ui/components/heading";
 import { Button } from "@lab/ui/components/button";
-import { Plus, X, Container, Eye, EyeOff, Check } from "lucide-react";
+import { Input } from "@lab/ui/components/input";
+import { InputGroup, InputGroupIcon, InputGroupInput } from "@lab/ui/components/input-group";
+import { Textarea } from "@lab/ui/components/textarea";
+import { Checkbox } from "@lab/ui/components/checkbox";
+import { FormField } from "@lab/ui/components/form-field";
+import { IconButton } from "@lab/ui/components/icon-button";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@lab/ui/components/table";
+import { ActionGroup } from "@lab/ui/components/action-group";
+import { Divider } from "@lab/ui/components/divider";
+import { Plus, Container, Eye, EyeOff, Pencil, Trash2, Check, X } from "lucide-react";
 
-type EnvVar = { key: string; value: string; revealed: boolean };
+type EnvVar = { key: string; value: string };
 
 export default function NewProjectPage() {
   const [image, setImage] = useState("");
-  const [ports, setPorts] = useState<string[]>([""]);
   const [systemPrompt, setSystemPrompt] = useState("");
-  const [permissions, setPermissions] = useState({ accessFiles: true, runCommands: true });
-  const [envVars, setEnvVars] = useState<EnvVar[]>([]);
-  const [newEnvKey, setNewEnvKey] = useState("");
-  const [newEnvValue, setNewEnvValue] = useState("");
+  const [permissions, setPermissions] = useState({
+    readFiles: true,
+    readWriteFiles: false,
+    runBashCommands: false,
+  });
 
-  const addPort = () => setPorts([...ports, ""]);
-  const removePort = (index: number) => setPorts(ports.filter((_, i) => i !== index));
-  const updatePort = (index: number, value: string) => {
-    const newPorts = [...ports];
-    newPorts[index] = value;
-    setPorts(newPorts);
+  const [ports, setPorts] = useState<string[]>([]);
+  const [portDraft, setPortDraft] = useState("");
+  const [editingPortIndex, setEditingPortIndex] = useState<number | null>(null);
+  const [editingPortValue, setEditingPortValue] = useState("");
+
+  const [envVars, setEnvVars] = useState<EnvVar[]>([]);
+  const [envKeyDraft, setEnvKeyDraft] = useState("");
+  const [envValueDraft, setEnvValueDraft] = useState("");
+  const [editingEnvIndex, setEditingEnvIndex] = useState<number | null>(null);
+  const [editingEnvKey, setEditingEnvKey] = useState("");
+  const [editingEnvValue, setEditingEnvValue] = useState("");
+  const [revealedEnvIndices, setRevealedEnvIndices] = useState<Set<number>>(new Set());
+
+  const portInputRef = useRef<HTMLInputElement>(null);
+  const envKeyInputRef = useRef<HTMLInputElement>(null);
+
+  const addPort = () => {
+    if (!portDraft.trim()) return;
+    setPorts([...ports, portDraft.trim()]);
+    setPortDraft("");
+    portInputRef.current?.focus();
+  };
+
+  const startEditingPort = (index: number) => {
+    setEditingPortIndex(index);
+    setEditingPortValue(ports[index] ?? "");
+  };
+
+  const saveEditingPort = () => {
+    if (editingPortIndex === null || !editingPortValue.trim()) return;
+    setPorts(ports.map((p, i) => (i === editingPortIndex ? editingPortValue.trim() : p)));
+    setEditingPortIndex(null);
+    setEditingPortValue("");
+  };
+
+  const cancelEditingPort = () => {
+    setEditingPortIndex(null);
+    setEditingPortValue("");
+  };
+
+  const removePort = (index: number) => {
+    setPorts(ports.filter((_, i) => i !== index));
   };
 
   const addEnvVar = () => {
-    if (newEnvKey.trim()) {
-      setEnvVars([...envVars, { key: newEnvKey, value: newEnvValue, revealed: false }]);
-      setNewEnvKey("");
-      setNewEnvValue("");
-    }
+    if (!envKeyDraft.trim()) return;
+    setEnvVars([...envVars, { key: envKeyDraft.trim(), value: envValueDraft }]);
+    setEnvKeyDraft("");
+    setEnvValueDraft("");
+    envKeyInputRef.current?.focus();
   };
 
-  const removeEnvVar = (index: number) => setEnvVars(envVars.filter((_, i) => i !== index));
+  const startEditingEnv = (index: number) => {
+    const envVar = envVars[index];
+    if (!envVar) return;
+    setEditingEnvIndex(index);
+    setEditingEnvKey(envVar.key);
+    setEditingEnvValue(envVar.value);
+  };
 
-  const toggleEnvVarReveal = (index: number) => {
-    setEnvVars(envVars.map((v, i) => (i === index ? { ...v, revealed: !v.revealed } : v)));
+  const saveEditingEnv = () => {
+    if (editingEnvIndex === null || !editingEnvKey.trim()) return;
+    setEnvVars(
+      envVars.map((v, i) =>
+        i === editingEnvIndex ? { key: editingEnvKey.trim(), value: editingEnvValue } : v,
+      ),
+    );
+    setEditingEnvIndex(null);
+    setEditingEnvKey("");
+    setEditingEnvValue("");
+  };
+
+  const cancelEditingEnv = () => {
+    setEditingEnvIndex(null);
+    setEditingEnvKey("");
+    setEditingEnvValue("");
+  };
+
+  const removeEnvVar = (index: number) => {
+    setEnvVars(envVars.filter((_, i) => i !== index));
+    setRevealedEnvIndices((prev) => {
+      const next = new Set(prev);
+      next.delete(index);
+      return next;
+    });
+  };
+
+  const toggleEnvReveal = (index: number) => {
+    setRevealedEnvIndices((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) {
+        next.delete(index);
+      } else {
+        next.add(index);
+      }
+      return next;
+    });
   };
 
   return (
@@ -51,191 +137,234 @@ export default function NewProjectPage() {
 
         <div className="flex flex-col gap-6">
           <FormField label="Container Image" hint="e.g., ghcr.io/ridafkih/agent-playground:main">
-            <div className="flex items-center gap-2 bg-muted border border-border px-2 py-1.5">
-              <Container className="size-3 text-muted-foreground" />
-              <input
-                type="text"
+            <InputGroup>
+              <InputGroupIcon>
+                <Container />
+              </InputGroupIcon>
+              <InputGroupInput
                 value={image}
                 onChange={(e) => setImage(e.currentTarget.value)}
                 placeholder="ghcr.io/org/image:tag"
-                className="flex-1 bg-transparent text-sm outline-none placeholder:text-muted-foreground"
               />
-            </div>
+            </InputGroup>
           </FormField>
 
           <FormField label="Exposed Ports" hint="Ports to expose from the container">
-            <div className="flex flex-col gap-1">
-              {ports.map((port, index) => (
-                <div key={index} className="flex items-center gap-1">
-                  <input
-                    type="text"
-                    value={port}
-                    onChange={(e) => updatePort(index, e.currentTarget.value)}
-                    placeholder="8080"
-                    className="flex-1 bg-muted border border-border px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
-                  />
-                  {ports.length > 1 && (
-                    <button
-                      type="button"
-                      onClick={() => removePort(index)}
-                      className="p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted"
-                    >
-                      <X className="size-3" />
-                    </button>
-                  )}
-                </div>
-              ))}
-              <Button variant="outline" icon={<Plus className="size-3" />} onClick={addPort}>
+            <form
+              className="flex flex-col gap-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                addPort();
+              }}
+            >
+              <Input
+                ref={portInputRef}
+                value={portDraft}
+                onChange={(e) => setPortDraft(e.currentTarget.value)}
+                placeholder="8080"
+              />
+              <Button type="submit" variant="outline" icon={<Plus className="size-3" />}>
                 Add Port
               </Button>
-            </div>
+            </form>
+            {ports.length > 0 && (
+              <Table className="mt-2 border border-border" columns="1fr auto">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Port</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {ports.map((port, index) => (
+                    <TableRow key={index}>
+                      <TableCell>
+                        {editingPortIndex === index ? (
+                          <Input
+                            value={editingPortValue}
+                            onChange={(e) => setEditingPortValue(e.currentTarget.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveEditingPort();
+                              if (e.key === "Escape") cancelEditingPort();
+                            }}
+                            autoFocus
+                          />
+                        ) : (
+                          port
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingPortIndex === index ? (
+                          <ActionGroup className="justify-end">
+                            <IconButton icon={<Check />} label="Save" onClick={saveEditingPort} />
+                            <IconButton icon={<X />} label="Cancel" onClick={cancelEditingPort} />
+                          </ActionGroup>
+                        ) : (
+                          <ActionGroup className="justify-end">
+                            <IconButton
+                              icon={<Pencil />}
+                              label="Edit"
+                              onClick={() => startEditingPort(index)}
+                            />
+                            <IconButton
+                              icon={<Trash2 />}
+                              label="Delete"
+                              onClick={() => removePort(index)}
+                            />
+                          </ActionGroup>
+                        )}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            )}
           </FormField>
 
           <FormField label="Agent Permissions">
             <div className="flex flex-col gap-1">
               <Checkbox
-                checked={permissions.accessFiles}
-                onChange={(checked) => setPermissions({ ...permissions, accessFiles: checked })}
+                size="md"
+                checked={permissions.readFiles}
+                onChange={(checked) => setPermissions({ ...permissions, readFiles: checked })}
               >
-                Access files
+                Read files
               </Checkbox>
               <Checkbox
-                checked={permissions.runCommands}
-                onChange={(checked) => setPermissions({ ...permissions, runCommands: checked })}
+                size="md"
+                checked={permissions.readWriteFiles}
+                onChange={(checked) => setPermissions({ ...permissions, readWriteFiles: checked })}
               >
-                Run commands
+                Read and write files
+              </Checkbox>
+              <Checkbox
+                size="md"
+                checked={permissions.runBashCommands}
+                onChange={(checked) => setPermissions({ ...permissions, runBashCommands: checked })}
+              >
+                Run bash commands
               </Checkbox>
             </div>
           </FormField>
 
           <FormField label="Environment Variables">
-            <div className="flex flex-col gap-2">
+            <form
+              className="flex flex-col gap-1"
+              onSubmit={(e) => {
+                e.preventDefault();
+                addEnvVar();
+              }}
+            >
               <div className="flex items-center gap-1">
-                <input
-                  type="text"
-                  value={newEnvKey}
-                  onChange={(e) => setNewEnvKey(e.currentTarget.value)}
+                <Input
+                  ref={envKeyInputRef}
+                  value={envKeyDraft}
+                  onChange={(e) => setEnvKeyDraft(e.currentTarget.value)}
                   placeholder="KEY"
-                  className="flex-1 bg-muted border border-border px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground font-mono"
+                  mono
                 />
-                <input
-                  type="text"
-                  value={newEnvValue}
-                  onChange={(e) => setNewEnvValue(e.currentTarget.value)}
-                  placeholder="value"
-                  className="flex-1 bg-muted border border-border px-2 py-1.5 text-sm outline-none placeholder:text-muted-foreground"
+                <Input
+                  value={envValueDraft}
+                  onChange={(e) => setEnvValueDraft(e.currentTarget.value)}
+                  placeholder="VALUE"
                 />
-                <Button variant="outline" icon={<Plus className="size-3" />} onClick={addEnvVar}>
-                  Add
-                </Button>
               </div>
-              {envVars.length > 0 && (
-                <div className="flex flex-col border border-border">
+              <Button type="submit" variant="outline" icon={<Plus className="size-3" />}>
+                Add Variable
+              </Button>
+            </form>
+            {envVars.length > 0 && (
+              <Table className="mt-2 border border-border" columns="1fr 1fr auto">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Key</TableHead>
+                    <TableHead>Value</TableHead>
+                    <TableHead />
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
                   {envVars.map((envVar, index) => (
-                    <div
-                      key={index}
-                      className="flex items-center gap-2 px-2 py-1.5 border-b border-border last:border-b-0"
-                    >
-                      <Copy size="xs" className="font-mono font-medium">
-                        {envVar.key}
-                      </Copy>
-                      <Copy size="xs" muted className="flex-1 truncate font-mono">
-                        {envVar.revealed ? envVar.value : "••••••••"}
-                      </Copy>
-                      <button
-                        type="button"
-                        onClick={() => toggleEnvVarReveal(index)}
-                        className="p-1 text-muted-foreground hover:text-foreground"
-                      >
-                        {envVar.revealed ? (
-                          <EyeOff className="size-3" />
+                    <TableRow key={index}>
+                      <TableCell className="font-mono">
+                        {editingEnvIndex === index ? (
+                          <Input
+                            value={editingEnvKey}
+                            onChange={(e) => setEditingEnvKey(e.currentTarget.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveEditingEnv();
+                              if (e.key === "Escape") cancelEditingEnv();
+                            }}
+                            mono
+                            autoFocus
+                          />
                         ) : (
-                          <Eye className="size-3" />
+                          envVar.key
                         )}
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => removeEnvVar(index)}
-                        className="p-1 text-muted-foreground hover:text-foreground"
-                      >
-                        <X className="size-3" />
-                      </button>
-                    </div>
+                      </TableCell>
+                      <TableCell>
+                        {editingEnvIndex === index ? (
+                          <Input
+                            value={editingEnvValue}
+                            onChange={(e) => setEditingEnvValue(e.currentTarget.value)}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter") saveEditingEnv();
+                              if (e.key === "Escape") cancelEditingEnv();
+                            }}
+                          />
+                        ) : revealedEnvIndices.has(index) ? (
+                          envVar.value
+                        ) : (
+                          "••••••••"
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {editingEnvIndex === index ? (
+                          <ActionGroup className="justify-end">
+                            <IconButton icon={<Check />} label="Save" onClick={saveEditingEnv} />
+                            <IconButton icon={<X />} label="Cancel" onClick={cancelEditingEnv} />
+                          </ActionGroup>
+                        ) : (
+                          <ActionGroup className="justify-end">
+                            <IconButton
+                              icon={revealedEnvIndices.has(index) ? <EyeOff /> : <Eye />}
+                              label={revealedEnvIndices.has(index) ? "Hide" : "Reveal"}
+                              onClick={() => toggleEnvReveal(index)}
+                            />
+                            <IconButton
+                              icon={<Pencil />}
+                              label="Edit"
+                              onClick={() => startEditingEnv(index)}
+                            />
+                            <IconButton
+                              icon={<Trash2 />}
+                              label="Delete"
+                              onClick={() => removeEnvVar(index)}
+                            />
+                          </ActionGroup>
+                        )}
+                      </TableCell>
+                    </TableRow>
                   ))}
-                </div>
-              )}
-            </div>
+                </TableBody>
+              </Table>
+            )}
           </FormField>
 
           <FormField label="System Prompt" hint="Instructions for the agent">
-            <textarea
+            <Textarea
               value={systemPrompt}
               onChange={(e) => setSystemPrompt(e.currentTarget.value)}
               placeholder="You are a helpful coding assistant..."
               rows={12}
-              className="w-full bg-muted border border-border px-2 py-1.5 text-sm outline-none resize-none placeholder:text-muted-foreground"
             />
           </FormField>
 
-          <div className="flex items-center justify-end gap-2 pt-4 border-t border-border">
-            <Button variant="outline">Cancel</Button>
-            <Button variant="primary">Create Project</Button>
-          </div>
+          <Divider />
+          <Button variant="primary" size="md" className="w-full">
+            Create Project
+          </Button>
         </div>
       </div>
     </div>
-  );
-}
-
-function FormField({
-  label,
-  hint,
-  children,
-}: {
-  label: string;
-  hint?: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <div className="flex flex-col gap-1.5">
-      <div>
-        <Copy size="sm" className="font-medium">
-          {label}
-        </Copy>
-        {hint && (
-          <Copy size="xs" muted>
-            {hint}
-          </Copy>
-        )}
-      </div>
-      {children}
-    </div>
-  );
-}
-
-function Checkbox({
-  checked,
-  onChange,
-  children,
-}: {
-  checked: boolean;
-  onChange: (checked: boolean) => void;
-  children: React.ReactNode;
-}) {
-  return (
-    <label className="flex items-center gap-1.5 cursor-pointer">
-      <button
-        type="button"
-        role="checkbox"
-        aria-checked={checked}
-        onClick={() => onChange(!checked)}
-        className={`size-3 border flex items-center justify-center ${
-          checked ? "border-foreground bg-foreground text-background" : "border-muted-foreground"
-        }`}
-      >
-        {checked && <Check className="size-2" />}
-      </button>
-      <Copy size="xs">{children}</Copy>
-    </label>
   );
 }

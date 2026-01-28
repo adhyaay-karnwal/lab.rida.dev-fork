@@ -4,6 +4,7 @@ import { Slot } from "../utils/slot";
 import { Spinner } from "./spinner";
 
 type ButtonVariant = "primary" | "primary-accent" | "secondary" | "outline";
+type ButtonSize = "sm" | "md";
 
 const variantStyles: Record<ButtonVariant, string> = {
   primary: "bg-primary text-primary-foreground hover:bg-primary/90",
@@ -12,8 +13,14 @@ const variantStyles: Record<ButtonVariant, string> = {
   outline: "bg-muted border border-border text-foreground hover:bg-muted/70",
 };
 
+const sizeStyles: Record<ButtonSize, string> = {
+  sm: "px-2 py-1.5 text-xs gap-1",
+  md: "px-3 py-2 text-sm gap-1.5",
+};
+
 export type ButtonProps = ButtonHTMLAttributes<HTMLButtonElement> & {
   variant?: ButtonVariant;
+  size?: ButtonSize;
   loading?: boolean;
   asChild?: boolean;
   icon?: ReactNode;
@@ -24,6 +31,7 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     {
       className,
       variant = "primary",
+      size = "sm",
       loading = false,
       disabled,
       asChild = false,
@@ -40,7 +48,8 @@ export const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       <Comp
         ref={ref}
         className={cn(
-          "flex items-center justify-center gap-1 px-2 py-1.5 text-xs",
+          "flex items-center justify-center",
+          sizeStyles[size],
           variantStyles[variant],
           "focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring",
           "disabled:pointer-events-none disabled:opacity-50",
