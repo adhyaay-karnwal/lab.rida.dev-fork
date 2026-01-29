@@ -10,6 +10,35 @@ import type {
 } from "@lab/multiplayer-shared";
 import { parsePath } from "@lab/multiplayer-shared";
 
+function hasType(value: object): value is { type: unknown } {
+  return "type" in value;
+}
+
+function hasChannel(value: object): value is { channel: unknown } {
+  return "channel" in value;
+}
+
+function isClientMessage(value: unknown): value is ClientMessage {
+  if (typeof value !== "object" || value === null) return false;
+  if (!hasType(value)) return false;
+
+  const { type } = value;
+
+  if (type === "ping") return true;
+
+  if (!hasChannel(value)) return false;
+  if (typeof value.channel !== "string") return false;
+
+  switch (type) {
+    case "subscribe":
+    case "unsubscribe":
+    case "event":
+      return true;
+    default:
+      return false;
+  }
+}
+
 export interface WebSocketData<TAuth = unknown> {
   auth: TAuth;
   subscriptions: Set<string>;
@@ -21,21 +50,18 @@ export interface ChannelContext<TAuth, TParams> {
   ws: ServerWebSocket<WebSocketData<TAuth>>;
 }
 
+type AnyParams = Record<string, string>;
+
 export type ChannelHandlers<TChannel extends ChannelConfig, TAuth> = {
-  authorize?: (
-    ctx: ChannelContext<TAuth, ParamsFromPath<TChannel["path"]>>,
-  ) => boolean | Promise<boolean>;
+  authorize?: (ctx: ChannelContext<TAuth, AnyParams>) => boolean | Promise<boolean>;
 
   getSnapshot: (
-    ctx: ChannelContext<TAuth, ParamsFromPath<TChannel["path"]>>,
+    ctx: ChannelContext<TAuth, AnyParams>,
   ) => SnapshotOf<TChannel> | Promise<SnapshotOf<TChannel>>;
 
   onEvent?: TChannel["clientEvent"] extends undefined
     ? never
-    : (
-        ctx: ChannelContext<TAuth, ParamsFromPath<TChannel["path"]>>,
-        event: ClientEventOf<TChannel>,
-      ) => void | Promise<void>;
+    : (ctx: ChannelContext<TAuth, AnyParams>, event: unknown) => void | Promise<void>;
 };
 
 export type SchemaHandlers<S extends Schema, TAuth> = {
@@ -43,22 +69,28 @@ export type SchemaHandlers<S extends Schema, TAuth> = {
 };
 
 export interface HandlerOptions<TAuth> {
-  authenticate?: (token: string | null) => TAuth | Promise<TAuth>;
+  authenticate: (token: string | null) => TAuth | Promise<TAuth>;
 }
 
-export function createWebSocketHandler<S extends Schema, TAuth = unknown>(
+export function createWebSocketHandler<S extends Schema, TAuth>(
   schema: S,
   handlers: SchemaHandlers<S, TAuth>,
-  options: HandlerOptions<TAuth> = {},
+  options: HandlerOptions<TAuth>,
 ) {
   type WS = ServerWebSocket<WebSocketData<TAuth>>;
 
+  type HandlerName = keyof typeof handlers & string;
+
+  function isHandlerName(name: string): name is HandlerName {
+    return name in handlers;
+  }
+
   function findChannelMatch(
     resolvedPath: string,
-  ): { name: string; config: ChannelConfig; params: Record<string, string> } | null {
+  ): { name: HandlerName; config: ChannelConfig; params: Record<string, string> } | null {
     for (const [name, config] of Object.entries(schema.channels)) {
       const params = parsePath(config.path, resolvedPath);
-      if (params !== null) {
+      if (params !== null && isHandlerName(name)) {
         return { name, config, params };
       }
     }
@@ -72,7 +104,7 @@ export function createWebSocketHandler<S extends Schema, TAuth = unknown>(
       return;
     }
 
-    const handler = handlers[match.name as keyof typeof handlers];
+    const handler = handlers[match.name];
     if (!handler) {
       sendMessage(ws, { type: "error", channel, error: "No handler for channel" });
       return;
@@ -85,7 +117,7 @@ export function createWebSocketHandler<S extends Schema, TAuth = unknown>(
     };
 
     if (handler.authorize) {
-      const authorized = await handler.authorize(ctx as never);
+      const authorized = await handler.authorize(ctx);
       if (!authorized) {
         sendMessage(ws, { type: "error", channel, error: "Unauthorized" });
         return;
@@ -96,7 +128,7 @@ export function createWebSocketHandler<S extends Schema, TAuth = unknown>(
     ws.subscribe(channel);
 
     try {
-      const snapshot = await handler.getSnapshot(ctx as never);
+      const snapshot = await handler.getSnapshot(ctx);
       sendMessage(ws, { type: "snapshot", channel, data: snapshot });
     } catch (err) {
       sendMessage(ws, {
@@ -116,7 +148,7 @@ export function createWebSocketHandler<S extends Schema, TAuth = unknown>(
     const match = findChannelMatch(channel);
     if (!match) return;
 
-    const handler = handlers[match.name as keyof typeof handlers];
+    const handler = handlers[match.name];
     if (!handler?.onEvent) return;
 
     if (!ws.data.subscriptions.has(channel)) {
@@ -131,7 +163,7 @@ export function createWebSocketHandler<S extends Schema, TAuth = unknown>(
     };
 
     try {
-      await (handler.onEvent as (ctx: unknown, event: unknown) => Promise<void>)(ctx, data);
+      await handler.onEvent(ctx, data);
     } catch (err) {
       sendMessage(ws, {
         type: "error",
@@ -152,19 +184,21 @@ export function createWebSocketHandler<S extends Schema, TAuth = unknown>(
 
     async message(ws: WS, message: string | Buffer) {
       try {
-        const data = JSON.parse(
-          typeof message === "string" ? message : message.toString(),
-        ) as ClientMessage;
+        const raw: unknown = JSON.parse(typeof message === "string" ? message : message.toString());
 
-        switch (data.type) {
+        if (!isClientMessage(raw)) {
+          return;
+        }
+
+        switch (raw.type) {
           case "subscribe":
-            await handleSubscribe(ws, data.channel);
+            await handleSubscribe(ws, raw.channel);
             break;
           case "unsubscribe":
-            handleUnsubscribe(ws, data.channel);
+            handleUnsubscribe(ws, raw.channel);
             break;
           case "event":
-            await handleEvent(ws, data.channel, data.data);
+            await handleEvent(ws, raw.channel, raw.data);
             break;
           case "ping":
             sendMessage(ws, { type: "pong" });
@@ -191,21 +225,17 @@ export function createWebSocketHandler<S extends Schema, TAuth = unknown>(
     const token = url.searchParams.get("token");
 
     let auth: TAuth;
-    if (options.authenticate) {
-      try {
-        auth = await options.authenticate(token);
-      } catch {
-        return new Response("Unauthorized", { status: 401 });
-      }
-    } else {
-      auth = null as TAuth;
+    try {
+      auth = await options.authenticate(token);
+    } catch {
+      return new Response("Unauthorized", { status: 401 });
     }
 
     const success = server.upgrade(req, {
       data: {
         auth,
         subscriptions: new Set<string>(),
-      } satisfies WebSocketData<TAuth>,
+      },
     });
 
     if (success) {

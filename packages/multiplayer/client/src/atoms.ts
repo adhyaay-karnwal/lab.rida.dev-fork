@@ -1,5 +1,5 @@
 import { atom } from "jotai";
-import { atomFamily } from "jotai/utils";
+import { atomFamily } from "jotai-family";
 import type { ConnectionState } from "./connection";
 
 export type ChannelState<T> =
@@ -12,12 +12,6 @@ export const connectionStateAtom = atom<ConnectionState>({
   status: "disconnected",
 });
 
-export const channelStateFamily = atomFamily(
-  (_channel: string) => atom<ChannelState<unknown>>({ status: "connecting" }),
-  (a, b) => a === b,
-);
-
-export const channelSubscriptionFamily = atomFamily(
-  (_channel: string) => atom(0),
-  (a, b) => a === b,
+export const channelStateFamily = atomFamily((_channel: string) =>
+  atom<ChannelState<unknown>>({ status: "connecting" }),
 );

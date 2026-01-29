@@ -1,4 +1,39 @@
-import type { ClientMessage, ServerMessage } from "@lab/multiplayer-shared";
+import type { WireClientMessage, WireServerMessage } from "@lab/multiplayer-shared";
+
+function hasType(value: object): value is { type: unknown } {
+  return "type" in value;
+}
+
+function hasChannel(value: object): value is { channel: unknown } {
+  return "channel" in value;
+}
+
+function hasError(value: object): value is { error: unknown } {
+  return "error" in value;
+}
+
+function isServerMessage(value: unknown): value is WireServerMessage {
+  if (typeof value !== "object" || value === null) return false;
+  if (!hasType(value)) return false;
+
+  const { type } = value;
+
+  if (type === "pong") return true;
+
+  if (!hasChannel(value)) return false;
+  if (typeof value.channel !== "string") return false;
+
+  switch (type) {
+    case "snapshot":
+    case "delta":
+    case "event":
+      return true;
+    case "error":
+      return hasError(value) && typeof value.error === "string";
+    default:
+      return false;
+  }
+}
 
 export type ConnectionState =
   | { status: "connecting" }
@@ -15,7 +50,7 @@ export interface ConnectionConfig {
   heartbeatInterval?: number;
 }
 
-type MessageListener = (message: ServerMessage) => void;
+type MessageListener = (message: WireServerMessage) => void;
 type StateListener = (state: ConnectionState) => void;
 
 export class ConnectionManager {
@@ -25,7 +60,7 @@ export class ConnectionManager {
   private messageListeners = new Map<string, Set<MessageListener>>();
   private stateListeners = new Set<StateListener>();
   private subscriptionCounts = new Map<string, number>();
-  private messageQueue: ClientMessage[] = [];
+  private messageQueue: WireClientMessage[] = [];
   private reconnectAttempt = 0;
   private reconnectTimeout: ReturnType<typeof setTimeout> | null = null;
   private heartbeatInterval: ReturnType<typeof setInterval> | null = null;
@@ -98,7 +133,7 @@ export class ConnectionManager {
     };
   }
 
-  send(message: ClientMessage): void {
+  send(message: WireClientMessage): void {
     if (this.ws?.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
@@ -106,8 +141,8 @@ export class ConnectionManager {
     }
   }
 
-  sendEvent(channel: string, data: unknown): void {
-    this.send({ type: "event", channel, data });
+  sendMessage(data: unknown): void {
+    this.send({ type: "message", data });
   }
 
   onStateChange(listener: StateListener): () => void {
@@ -160,17 +195,21 @@ export class ConnectionManager {
 
   private handleMessage(event: MessageEvent): void {
     try {
-      const message = JSON.parse(event.data) as ServerMessage;
+      const parsed: unknown = JSON.parse(event.data);
 
-      if (message.type === "pong") {
+      if (!isServerMessage(parsed)) {
         return;
       }
 
-      if ("channel" in message) {
-        const listeners = this.messageListeners.get(message.channel);
+      if (parsed.type === "pong") {
+        return;
+      }
+
+      if ("channel" in parsed) {
+        const listeners = this.messageListeners.get(parsed.channel);
         if (listeners) {
           for (const listener of listeners) {
-            listener(message);
+            listener(parsed);
           }
         }
       }

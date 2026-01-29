@@ -14,6 +14,7 @@
       "name": "web",
       "version": "0.1.0",
       "dependencies": {
+        "@lab/multiplayer-channels": "workspace:*",
         "@lab/multiplayer-client": "workspace:*",
         "@lab/multiplayer-shared": "workspace:*",
         "@lab/ui": "workspace:*",
@@ -38,12 +39,25 @@
         "typescript": "^5",
       },
     },
+    "packages/multiplayer-channels": {
+      "name": "@lab/multiplayer-channels",
+      "version": "0.1.0",
+      "dependencies": {
+        "@lab/multiplayer-shared": "workspace:*",
+        "zod": "^3.24.2",
+      },
+      "devDependencies": {
+        "typescript": "^5",
+      },
+    },
     "packages/multiplayer/client": {
       "name": "@lab/multiplayer-client",
       "version": "0.1.0",
       "dependencies": {
         "@lab/multiplayer-shared": "workspace:*",
         "jotai": "^2.12.3",
+        "jotai-family": "^1.0.1",
+        "zod": "^3.24.2",
       },
       "devDependencies": {
         "@types/react": "^19",
@@ -241,6 +255,8 @@
     "@jridgewell/sourcemap-codec": ["@jridgewell/sourcemap-codec@1.5.5", "", {}, "sha512-cYQ9310grqxueWbl+WuIUIaiUaDcj7WOq5fVhEljNVgRfOUhY9fy2zTvfoqWsnebh8Sl70VScFbICvJnLKB0Og=="],
 
     "@jridgewell/trace-mapping": ["@jridgewell/trace-mapping@0.3.31", "", { "dependencies": { "@jridgewell/resolve-uri": "^3.1.0", "@jridgewell/sourcemap-codec": "^1.4.14" } }, "sha512-zzNR+SdQSDJzc8joaeP8QQoCQr8NuYx2dIIytl1QeBEZHJ9uW6hebsrYgbz8hJwUQao3TWCMtmfV8Nu1twOLAw=="],
+
+    "@lab/multiplayer-channels": ["@lab/multiplayer-channels@workspace:packages/multiplayer-channels"],
 
     "@lab/multiplayer-client": ["@lab/multiplayer-client@workspace:packages/multiplayer/client"],
 
@@ -811,6 +827,8 @@
     "jiti": ["jiti@2.6.1", "", { "bin": { "jiti": "lib/jiti-cli.mjs" } }, "sha512-ekilCSN1jwRvIbgeg/57YFh8qQDNbwDb9xT/qu2DAHbFFZUicIl4ygVaAvzveMhMVr3LnpSKTNnwt8PoOfmKhQ=="],
 
     "jotai": ["jotai@2.17.0", "", { "peerDependencies": { "@babel/core": ">=7.0.0", "@babel/template": ">=7.0.0", "@types/react": ">=17.0.0", "react": ">=17.0.0" }, "optionalPeers": ["@babel/core", "@babel/template", "@types/react", "react"] }, "sha512-DBPT7Vx7E7R/ZJL7Uq7yUA9+LLR0IRiRM+Bw5ugVwv8L8++RjlXVXZ2//ccucypc5lcyuHOW09rYcW77RurduQ=="],
+
+    "jotai-family": ["jotai-family@1.0.1", "", { "peerDependencies": { "jotai": ">=2.9.0" } }, "sha512-Zb/79GNDhC/z82R+6qTTpeKW4l4H6ZCApfF5W8G4SH37E4mhbysU7r8DkP0KX94hWvjB/6lt/97nSr3wB+64Zg=="],
 
     "js-tokens": ["js-tokens@4.0.0", "", {}, "sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ=="],
 

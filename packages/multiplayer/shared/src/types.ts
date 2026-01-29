@@ -5,17 +5,19 @@ export interface ChannelConfig<
   TSnapshot extends z.ZodType = z.ZodType,
   TDelta extends z.ZodType | undefined = z.ZodType | undefined,
   TEvent extends z.ZodType | undefined = z.ZodType | undefined,
-  TClientEvent extends z.ZodType | undefined = z.ZodType | undefined,
 > {
   path: TPath;
   snapshot: TSnapshot;
   delta?: TDelta;
   event?: TEvent;
-  clientEvent?: TClientEvent;
 }
 
-export interface Schema<T extends Record<string, ChannelConfig> = Record<string, ChannelConfig>> {
-  channels: T;
+export interface Schema<
+  TChannels extends Record<string, ChannelConfig> = Record<string, ChannelConfig>,
+  TClientMessages extends z.ZodType = z.ZodType,
+> {
+  channels: TChannels;
+  clientMessages: TClientMessages;
 }
 
 export type SnapshotOf<T extends ChannelConfig> = z.infer<T["snapshot"]>;
@@ -28,21 +30,15 @@ export type EventOf<T extends ChannelConfig> = T["event"] extends z.ZodType
   ? z.infer<T["event"]>
   : never;
 
-export type ClientEventOf<T extends ChannelConfig> = T extends {
-  clientEvent: infer CE;
-}
-  ? CE extends z.ZodType
-    ? z.infer<CE>
-    : never
-  : never;
+export type ClientMessageOf<S extends Schema> = z.infer<S["clientMessages"]>;
 
-export type ClientMessage =
+export type WireClientMessage =
   | { type: "subscribe"; channel: string }
   | { type: "unsubscribe"; channel: string }
-  | { type: "event"; channel: string; data: unknown }
+  | { type: "message"; data: unknown }
   | { type: "ping" };
 
-export type ServerMessage =
+export type WireServerMessage =
   | { type: "snapshot"; channel: string; data: unknown }
   | { type: "delta"; channel: string; data: unknown }
   | { type: "event"; channel: string; data: unknown }

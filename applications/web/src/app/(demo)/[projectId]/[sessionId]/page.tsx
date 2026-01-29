@@ -5,29 +5,21 @@ import { useParams } from "next/navigation";
 import { SessionView } from "@/components/session-view";
 import { SessionSidebar } from "@/components/session-sidebar";
 import type { ReviewableFile } from "@/types/review";
-import {
-  useMultiplayerState,
-  useMultiplayerSend,
-  useConnectionState,
-} from "@/lib/multiplayer/client";
+import { useMultiplayer } from "@/lib/multiplayer/client";
 
 export default function SessionPage() {
   const params = useParams();
   const sessionId =
     typeof params.sessionId === "string" ? params.sessionId : (params.sessionId?.[0] ?? "");
 
-  const connection = useConnectionState();
-  const messagesState = useMultiplayerState("sessionMessages", { uuid: sessionId });
-  const typingState = useMultiplayerState("sessionTyping", { uuid: sessionId });
-  const metadataState = useMultiplayerState("sessionMetadata", { uuid: sessionId });
-  const filesState = useMultiplayerState("sessionChangedFiles", { uuid: sessionId });
-  const branchesState = useMultiplayerState("sessionBranches", { uuid: sessionId });
-  const linksState = useMultiplayerState("sessionLinks", { uuid: sessionId });
-  const promptEngineersState = useMultiplayerState("sessionPromptEngineers", { uuid: sessionId });
-  const logsState = useMultiplayerState("sessionLogs", { uuid: sessionId });
+  const { send, connectionState, useChannel } = useMultiplayer();
 
-  const sendMessage = useMultiplayerSend("sessionMessages", { uuid: sessionId });
-  const sendTyping = useMultiplayerSend("sessionTyping", { uuid: sessionId });
+  const messagesState = useChannel("sessionMessages", { uuid: sessionId });
+  const filesState = useChannel("sessionChangedFiles", { uuid: sessionId });
+  const branchesState = useChannel("sessionBranches", { uuid: sessionId });
+  const linksState = useChannel("sessionLinks", { uuid: sessionId });
+  const promptEngineersState = useChannel("sessionPromptEngineers", { uuid: sessionId });
+  const logsState = useChannel("sessionLogs", { uuid: sessionId });
 
   const [localReviewFiles, setLocalReviewFiles] = useState<ReviewableFile[]>([]);
 
@@ -40,11 +32,11 @@ export default function SessionPage() {
   const logSources = logsState.status === "connected" ? logsState.data : [];
 
   const handleSendMessage = (content: string) => {
-    sendMessage({ type: "send_message", content });
+    send(sessionId, { type: "send_message", content });
   };
 
   const handleTyping = (isTyping: boolean) => {
-    sendTyping({ isTyping });
+    send(sessionId, { type: "set_typing", isTyping });
   };
 
   const handleDismissFile = (path: string) => {
@@ -53,7 +45,7 @@ export default function SessionPage() {
     );
   };
 
-  if (connection.status === "connecting" || connection.status === "reconnecting") {
+  if (connectionState.status === "connecting" || connectionState.status === "reconnecting") {
     return (
       <div className="flex h-full items-center justify-center text-muted-foreground">
         Connecting...

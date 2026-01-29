@@ -15,7 +15,7 @@ export const Table = forwardRef<HTMLTableElement, TableProps>(
     <table
       ref={ref}
       className={cn("w-full text-sm", columns && "grid *:contents", className)}
-      style={columns ? ({ ...style, gridTemplateColumns: columns } as React.CSSProperties) : style}
+      style={columns ? { ...style, gridTemplateColumns: columns } : style}
       {...props}
     />
   ),

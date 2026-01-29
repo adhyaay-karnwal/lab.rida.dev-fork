@@ -1,0 +1,166 @@
+import { z } from "zod";
+import { defineChannel, defineSchema } from "@lab/multiplayer-shared";
+
+const MessageSchema = z.object({
+  id: z.string(),
+  role: z.enum(["user", "assistant"]),
+  content: z.string(),
+  timestamp: z.number(),
+});
+
+const ReviewableFileSchema = z.object({
+  path: z.string(),
+  originalContent: z.string(),
+  currentContent: z.string(),
+  status: z.enum(["pending", "dismissed"]),
+  changeType: z.enum(["modified", "created", "deleted"]),
+});
+
+const LogSourceSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.enum(["container", "process", "file"]),
+});
+
+const LogEntrySchema = z.object({
+  sourceId: z.string(),
+  timestamp: z.number(),
+  level: z.enum(["debug", "info", "warn", "error"]),
+  message: z.string(),
+});
+
+export const schema = defineSchema({
+  channels: {
+    projects: defineChannel({
+      path: "projects",
+      snapshot: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+        }),
+      ),
+      delta: z.object({
+        type: z.enum(["add", "update", "remove"]),
+        project: z.object({ id: z.string(), name: z.string() }),
+      }),
+    }),
+
+    sessions: defineChannel({
+      path: "sessions",
+      snapshot: z.array(
+        z.object({
+          id: z.string(),
+          projectId: z.string(),
+          title: z.string(),
+          hasUnread: z.boolean().optional(),
+          isWorking: z.boolean().optional(),
+        }),
+      ),
+    }),
+
+    sessionMetadata: defineChannel({
+      path: "session/{uuid}/metadata",
+      snapshot: z.object({
+        title: z.string(),
+        lastMessage: z.string().optional(),
+        participantCount: z.number(),
+      }),
+      delta: z.object({
+        title: z.string().optional(),
+        lastMessage: z.string().optional(),
+      }),
+    }),
+
+    sessionMessages: defineChannel({
+      path: "session/{uuid}/messages",
+      snapshot: z.array(MessageSchema),
+      delta: z.object({
+        type: z.enum(["append", "update", "stream"]),
+        message: MessageSchema.optional(),
+        chunk: z.string().optional(),
+      }),
+    }),
+
+    sessionTyping: defineChannel({
+      path: "session/{uuid}/typing",
+      snapshot: z.array(
+        z.object({
+          userId: z.string(),
+          isTyping: z.boolean(),
+        }),
+      ),
+    }),
+
+    sessionPromptEngineers: defineChannel({
+      path: "session/{uuid}/prompt-engineers",
+      snapshot: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          avatar: z.string().optional(),
+        }),
+      ),
+    }),
+
+    sessionChangedFiles: defineChannel({
+      path: "session/{uuid}/changed_files",
+      snapshot: z.array(ReviewableFileSchema),
+      delta: z.object({
+        type: z.enum(["add", "update", "remove"]),
+        file: ReviewableFileSchema,
+      }),
+    }),
+
+    sessionBranches: defineChannel({
+      path: "session/{uuid}/branches",
+      snapshot: z.array(
+        z.object({
+          id: z.string(),
+          name: z.string(),
+          prNumber: z.number().optional(),
+          prUrl: z.string().optional(),
+        }),
+      ),
+    }),
+
+    sessionLinks: defineChannel({
+      path: "session/{uuid}/links",
+      snapshot: z.array(
+        z.object({
+          id: z.string(),
+          title: z.string(),
+          url: z.string(),
+        }),
+      ),
+    }),
+
+    sessionLogs: defineChannel({
+      path: "session/{uuid}/logs",
+      snapshot: z.array(LogSourceSchema),
+      event: LogEntrySchema,
+    }),
+
+    sessionStream: defineChannel({
+      path: "session/{uuid}/stream",
+      snapshot: z.object({ active: z.boolean() }),
+      event: z.object({
+        type: z.enum(["token", "complete", "error"]),
+        content: z.string().optional(),
+      }),
+    }),
+  },
+
+  clientMessages: z.discriminatedUnion("type", [
+    z.object({
+      type: z.literal("send_message"),
+      content: z.string(),
+    }),
+    z.object({
+      type: z.literal("set_typing"),
+      isTyping: z.boolean(),
+    }),
+  ]),
+});
+
+export type Schema = typeof schema;
+export type ClientMessage = z.infer<typeof schema.clientMessages>;

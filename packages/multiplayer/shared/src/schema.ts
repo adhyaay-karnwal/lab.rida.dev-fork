@@ -1,33 +1,25 @@
 import type { z } from "zod";
 
 export function defineChannel<
-  TPath extends string,
-  TSnapshot extends z.ZodType,
-  TDelta extends z.ZodType = z.ZodNever,
-  TEvent extends z.ZodType = z.ZodNever,
-  TClientEvent extends z.ZodType = z.ZodNever,
->(config: {
-  path: TPath;
-  snapshot: TSnapshot;
-  delta?: TDelta;
-  event?: TEvent;
-  clientEvent?: TClientEvent;
-}): {
-  path: TPath;
-  snapshot: TSnapshot;
-  delta: TDelta;
-  event: TEvent;
-  clientEvent: TClientEvent;
-} {
-  return config as {
-    path: TPath;
-    snapshot: TSnapshot;
-    delta: TDelta;
-    event: TEvent;
-    clientEvent: TClientEvent;
-  };
+  const TConfig extends {
+    path: string;
+    snapshot: z.ZodType;
+    delta?: z.ZodType;
+    event?: z.ZodType;
+  },
+>(config: TConfig): TConfig {
+  return config;
 }
 
-export function defineSchema<const T extends {}>(channels: T): { channels: T } {
-  return { channels };
+export function defineSchema<
+  const TChannels extends Record<string, ReturnType<typeof defineChannel>>,
+  const TClientMessages extends z.ZodType,
+>(config: {
+  channels: TChannels;
+  clientMessages: TClientMessages;
+}): {
+  channels: TChannels;
+  clientMessages: TClientMessages;
+} {
+  return config;
 }

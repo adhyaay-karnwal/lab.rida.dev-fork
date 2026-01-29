@@ -35,7 +35,7 @@ function MultiplayerProviderInner({ connection, children }: MultiplayerProviderI
 }
 
 export function createMultiplayerProvider<S extends Schema>(schema: S) {
-  const hooks = createHooks(schema);
+  const { useMultiplayer } = createHooks(schema);
 
   interface ProviderProps {
     config: ConnectionConfig;
@@ -52,13 +52,8 @@ export function createMultiplayerProvider<S extends Schema>(schema: S) {
     );
   }
 
-  function useMultiplayer() {
-    return hooks;
-  }
-
   return {
     MultiplayerProvider,
     useMultiplayer,
-    ...hooks,
   };
 }

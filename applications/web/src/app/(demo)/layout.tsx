@@ -25,14 +25,16 @@ import {
 } from "@lab/ui/components/dropdown";
 import { Box } from "lucide-react";
 import type { ReactNode } from "react";
-import { useMultiplayerState } from "@/lib/multiplayer/client";
+import { useMultiplayer } from "@/lib/multiplayer/client";
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const params = useParams();
   const router = useRouter();
 
-  const projectsState = useMultiplayerState("projects");
-  const sessionsState = useMultiplayerState("sessions");
+  const { useChannel } = useMultiplayer();
+
+  const projectsState = useChannel("projects");
+  const sessionsState = useChannel("sessions");
 
   const projects = projectsState.status === "connected" ? projectsState.data : [];
   const sessions = sessionsState.status === "connected" ? sessionsState.data : [];

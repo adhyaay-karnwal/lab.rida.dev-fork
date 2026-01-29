@@ -16,7 +16,7 @@ export type {
   SnapshotOf,
   DeltaOf,
   EventOf,
-  ClientEventOf,
-  ClientMessage,
-  ServerMessage,
+  ClientMessageOf,
+  WireClientMessage,
+  WireServerMessage,
 } from "./types";
