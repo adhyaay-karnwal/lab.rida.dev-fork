@@ -16,7 +16,7 @@ export function OpencodePartRetry({ part }: OpencodePartRetryProps) {
         Retry attempt {part.attempt}
       </Copy>
       <Copy as="span" size="xs" muted className="truncate">
-        {part.error.message}
+        {part.error.data.message}
       </Copy>
     </div>
   );

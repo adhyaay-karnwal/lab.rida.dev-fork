@@ -35,9 +35,9 @@ export function OpencodePartPatch({ part }: OpencodePartPatchProps) {
       <div className={cn(isExpanded ? "max-h-125 overflow-y-auto" : "hidden")}>
         <div className="px-4 py-2 space-y-1 min-w-0">
           {part.files.map((file) => (
-            <div key={file.path} className="flex items-center gap-2 min-w-0">
+            <div key={file} className="flex items-center gap-2 min-w-0">
               <Copy as="span" size="xs" muted className="truncate font-mono">
-                {file.path}
+                {file}
               </Copy>
             </div>
           ))}

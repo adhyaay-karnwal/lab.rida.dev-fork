@@ -3,12 +3,31 @@ import type {
   SandboxProvider,
   ContainerCreateOptions,
   ContainerInfo,
+  ContainerState,
   ExitResult,
   LogChunk,
   NetworkCreateOptions,
   ExecOptions,
   ExecResult,
 } from "@lab/sdk";
+
+const VALID_CONTAINER_STATES: readonly string[] = [
+  "created",
+  "running",
+  "paused",
+  "restarting",
+  "removing",
+  "exited",
+  "dead",
+];
+
+function isContainerState(status: string): status is ContainerState {
+  return VALID_CONTAINER_STATES.includes(status);
+}
+
+function toContainerState(status: string): ContainerState {
+  return isContainerState(status) ? status : "dead";
+}
 
 export interface DockerClientOptions {
   socketPath?: string;
@@ -153,7 +172,7 @@ export class DockerClient implements SandboxProvider {
       name: info.Name.replace(/^\//, ""),
       image: info.Config.Image,
       status: info.State.Status,
-      state: info.State.Status as ContainerInfo["state"],
+      state: toContainerState(info.State.Status),
       ports,
       labels: info.Config.Labels ?? {},
     };
@@ -183,8 +202,9 @@ export class DockerClient implements SandboxProvider {
 
     let buffer = Buffer.alloc(0);
 
-    for await (const chunk of stream as unknown as AsyncIterable<Buffer>) {
-      buffer = Buffer.concat([buffer, chunk]);
+    for await (const chunk of stream) {
+      const data = typeof chunk === "string" ? Buffer.from(chunk) : chunk;
+      buffer = Buffer.concat([buffer, data]);
 
       while (buffer.length >= 8) {
         const streamType = buffer[0];
@@ -344,20 +364,14 @@ export class DockerClient implements SandboxProvider {
   }
 }
 
+function hasStatusCode(err: unknown): err is { statusCode: number } {
+  return typeof err === "object" && err !== null && "statusCode" in err;
+}
+
 function isNotFoundError(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "statusCode" in err &&
-    (err as { statusCode: number }).statusCode === 404
-  );
+  return hasStatusCode(err) && err.statusCode === 404;
 }
 
 function isNotRunningError(err: unknown): boolean {
-  return (
-    typeof err === "object" &&
-    err !== null &&
-    "statusCode" in err &&
-    (err as { statusCode: number }).statusCode === 304
-  );
+  return hasStatusCode(err) && err.statusCode === 304;
 }

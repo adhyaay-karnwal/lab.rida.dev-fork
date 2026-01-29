@@ -44,14 +44,6 @@ export function OpencodePartSubtask({ part }: OpencodePartSubtaskProps) {
               {part.prompt}
             </pre>
           </div>
-          {part.command && (
-            <div className="min-w-0">
-              <p className="text-xs font-sans text-muted-foreground mb-1">Command</p>
-              <pre className="text-xs font-mono bg-background p-2 rounded overflow-x-auto w-0 min-w-full">
-                {part.command}
-              </pre>
-            </div>
-          )}
         </div>
       </div>
     </div>
