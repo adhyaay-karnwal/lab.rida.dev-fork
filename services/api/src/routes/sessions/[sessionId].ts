@@ -81,13 +81,19 @@ const DELETE: RouteHandler = async (_request, params) => {
     }),
   );
 
+  const networkName = `lab-${sessionId}`;
+
   if (isProxyInitialized()) {
     try {
       await proxyManager.unregisterCluster(sessionId);
-    } catch {}
+    } catch {
+      const caddyContainerName = process.env.CADDY_CONTAINER_NAME;
+      if (caddyContainerName) {
+        await docker.disconnectFromNetwork(caddyContainerName, networkName);
+      }
+    }
   }
 
-  const networkName = `lab-${sessionId}`;
   await docker.removeNetwork(networkName);
 
   await db.delete(sessions).where(eq(sessions.id, sessionId));
