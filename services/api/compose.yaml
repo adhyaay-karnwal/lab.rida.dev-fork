@@ -1,0 +1,11 @@
+services:
+  caddy:
+    image: caddy:2-alpine
+    container_name: lab-caddy-proxy
+    ports:
+      - "8080:80"
+      - "8443:443"
+      - "2019:2019"
+    command: caddy run --config /etc/caddy/caddy.json
+    volumes:
+      - ./caddy.json:/etc/caddy/caddy.json:ro
