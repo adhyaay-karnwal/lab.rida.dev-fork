@@ -1,2 +1,8 @@
 export { createClient, type Client, type ClientConfig } from "./client";
-export type { Project, CreateProjectInput, Container, CreateContainerInput } from "./types";
+export type {
+  Project,
+  CreateProjectInput,
+  Container,
+  CreateContainerInput,
+  Session,
+} from "./types";

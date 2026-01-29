@@ -1,4 +1,10 @@
-import type { Project, CreateProjectInput, Container, CreateContainerInput } from "./types";
+import type {
+  Project,
+  CreateProjectInput,
+  Container,
+  CreateContainerInput,
+  Session,
+} from "./types";
 
 export interface ClientConfig {
   baseUrl: string;
@@ -53,6 +59,15 @@ export function createClient(config: ClientConfig) {
         request<Container>(`/projects/${projectId}/containers`, {
           method: "POST",
           body: JSON.stringify(input),
+        }),
+    },
+
+    sessions: {
+      list: (projectId: string) => request<Session[]>(`/projects/${projectId}/sessions`),
+
+      create: (projectId: string) =>
+        request<Session>(`/projects/${projectId}/sessions`, {
+          method: "POST",
         }),
     },
   };

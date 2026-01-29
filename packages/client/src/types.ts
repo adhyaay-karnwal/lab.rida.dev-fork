@@ -24,3 +24,11 @@ export interface CreateContainerInput {
   image: string;
   hostname?: string;
 }
+
+export interface Session {
+  id: string;
+  projectId: string;
+  status: string;
+  createdAt: string;
+  updatedAt: string;
+}

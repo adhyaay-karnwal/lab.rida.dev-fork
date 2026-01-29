@@ -173,6 +173,7 @@ export function createHooks<
 interface DeltaObject {
   type?: string;
   project?: unknown;
+  session?: unknown;
   file?: unknown;
   message?: unknown;
   [key: string]: unknown;
@@ -192,7 +193,7 @@ function isItemWithId(value: unknown): value is ItemWithId {
 }
 
 function getItem(d: DeltaObject): unknown {
-  return d.project ?? d.file ?? d.message;
+  return d.project ?? d.session ?? d.file ?? d.message;
 }
 
 function applyDelta(current: unknown, delta: unknown, channel: ChannelConfig): unknown {

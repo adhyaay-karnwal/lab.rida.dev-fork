@@ -26,6 +26,46 @@ import {
 import { Box } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMultiplayer } from "@/lib/multiplayer/client";
+import { useCreateSession } from "@/lib/api";
+
+interface ProjectSessionsPanelProps {
+  project: { id: string; name: string };
+  sessions: { id: string; title: string; hasUnread?: boolean; isWorking?: boolean }[];
+  activeSessionId: string | null;
+}
+
+function ProjectSessionsPanel({ project, sessions, activeSessionId }: ProjectSessionsPanelProps) {
+  const router = useRouter();
+  const { createSession } = useCreateSession(project.id);
+
+  const handleNewSession = async () => {
+    const session = await createSession();
+    router.push(`/${project.id}/${session.id}`);
+  };
+
+  return (
+    <SidebarPanel>
+      <SidebarHeader
+        action={<SidebarAction icon={<X />} label="Close" onClick={() => router.push("/")} />}
+      >
+        {project.name}
+      </SidebarHeader>
+      <SidebarBody>
+        <SidebarNewSession onClick={handleNewSession} />
+        {sessions.map((session) => (
+          <SidebarSession
+            key={session.id}
+            title={session.title}
+            hasUnread={session.hasUnread}
+            isWorking={session.isWorking}
+            active={activeSessionId === session.id}
+            onClick={() => router.push(`/${project.id}/${session.id}`)}
+          />
+        ))}
+      </SidebarBody>
+    </SidebarPanel>
+  );
+}
 
 export default function MainLayout({ children }: { children: ReactNode }) {
   const params = useParams();
@@ -116,37 +156,14 @@ export default function MainLayout({ children }: { children: ReactNode }) {
             <SidebarPanelGroup>
               {projects
                 .filter((project) => project.id === projectId)
-                .map((project) => {
-                  const projectSessions = sessions.filter((s) => s.projectId === project.id);
-                  return (
-                    <SidebarPanel key={project.id}>
-                      <SidebarHeader
-                        action={
-                          <SidebarAction
-                            icon={<X />}
-                            label="Close"
-                            onClick={() => router.push("/")}
-                          />
-                        }
-                      >
-                        {project.name}
-                      </SidebarHeader>
-                      <SidebarBody>
-                        <SidebarNewSession />
-                        {projectSessions.map((session) => (
-                          <SidebarSession
-                            key={session.id}
-                            title={session.title}
-                            hasUnread={session.hasUnread}
-                            isWorking={session.isWorking}
-                            active={sessionId === session.id}
-                            onClick={() => router.push(`/${project.id}/${session.id}`)}
-                          />
-                        ))}
-                      </SidebarBody>
-                    </SidebarPanel>
-                  );
-                })}
+                .map((project) => (
+                  <ProjectSessionsPanel
+                    key={project.id}
+                    project={project}
+                    sessions={sessions.filter((s) => s.projectId === project.id)}
+                    activeSessionId={sessionId}
+                  />
+                ))}
             </SidebarPanelGroup>
           )}
         </Sidebar>
