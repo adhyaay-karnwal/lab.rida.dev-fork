@@ -15,7 +15,7 @@ import {
 } from "@/components/sidebar";
 import { Avatar } from "@lab/ui/components/avatar";
 import { Copy } from "@lab/ui/components/copy";
-import { X, Settings, ChevronDown, FolderKanban, Cpu } from "lucide-react";
+import { X, Settings, ChevronDown, FolderKanban, Cpu, GitBranch } from "lucide-react";
 import {
   Dropdown,
   DropdownTrigger,
@@ -78,9 +78,15 @@ export default function MainLayout({ children }: { children: ReactNode }) {
                   </DropdownItem>
                   <DropdownItem
                     icon={<Cpu className="size-3" />}
-                    onClick={() => router.push("/providers")}
+                    onClick={() => router.push("/settings/providers")}
                   >
                     Providers
+                  </DropdownItem>
+                  <DropdownItem
+                    icon={<GitBranch className="size-3" />}
+                    onClick={() => router.push("/settings/git")}
+                  >
+                    Git Settings
                   </DropdownItem>
                 </DropdownMenu>
               </Dropdown>
