@@ -34,10 +34,6 @@
     "./schema/session-containers": {
       "types": "./src/schema/session-containers.ts",
       "default": "./src/schema/session-containers.ts"
-    },
-    "./schema/provider-api-keys": {
-      "types": "./src/schema/provider-api-keys.ts",
-      "default": "./src/schema/provider-api-keys.ts"
     }
   },
   "scripts": {

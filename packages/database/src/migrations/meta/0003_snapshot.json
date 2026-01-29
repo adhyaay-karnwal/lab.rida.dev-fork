@@ -1,6 +1,6 @@
 {
-  "id": "1d730414-a7be-4691-a6cc-519b695be264",
-  "prevId": "075d9243-064f-45dc-b5f3-c93a6b162eed",
+  "id": "47181d42-1631-4559-941b-6b64ea5fc0e3",
+  "prevId": "1d730414-a7be-4691-a6cc-519b695be264",
   "version": "7",
   "dialect": "postgresql",
   "tables": {
@@ -40,8 +40,12 @@
           "name": "container_env_vars_container_id_containers_id_fk",
           "tableFrom": "container_env_vars",
           "tableTo": "containers",
-          "columnsFrom": ["container_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "container_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -75,8 +79,12 @@
           "name": "container_permissions_container_id_containers_id_fk",
           "tableFrom": "container_permissions",
           "tableTo": "containers",
-          "columnsFrom": ["container_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "container_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -117,8 +125,12 @@
           "name": "container_ports_container_id_containers_id_fk",
           "tableFrom": "container_ports",
           "tableTo": "containers",
-          "columnsFrom": ["container_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "container_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -179,8 +191,12 @@
           "name": "containers_project_id_projects_id_fk",
           "tableFrom": "containers",
           "tableTo": "projects",
-          "columnsFrom": ["project_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -237,58 +253,6 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
-    "public.provider_api_keys": {
-      "name": "provider_api_keys",
-      "schema": "",
-      "columns": {
-        "id": {
-          "name": "id",
-          "type": "uuid",
-          "primaryKey": true,
-          "notNull": true,
-          "default": "gen_random_uuid()"
-        },
-        "provider": {
-          "name": "provider",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "encrypted_key": {
-          "name": "encrypted_key",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {},
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {
-        "provider_api_keys_provider_unique": {
-          "name": "provider_api_keys_provider_unique",
-          "nullsNotDistinct": false,
-          "columns": ["provider"]
-        }
-      },
-      "policies": {},
-      "checkConstraints": {},
-      "isRLSEnabled": false
-    },
     "public.session_containers": {
       "name": "session_containers",
       "schema": "",
@@ -339,8 +303,12 @@
           "name": "session_containers_session_id_sessions_id_fk",
           "tableFrom": "session_containers",
           "tableTo": "sessions",
-          "columnsFrom": ["session_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "session_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -348,8 +316,12 @@
           "name": "session_containers_container_id_containers_id_fk",
           "tableFrom": "session_containers",
           "tableTo": "containers",
-          "columnsFrom": ["container_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "container_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -405,8 +377,12 @@
           "name": "sessions_project_id_projects_id_fk",
           "tableFrom": "sessions",
           "tableTo": "projects",
-          "columnsFrom": ["project_id"],
-          "columnsTo": ["id"],
+          "columnsFrom": [
+            "project_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }

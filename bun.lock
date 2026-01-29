@@ -177,6 +177,7 @@
         "@lab/multiplayer-server": "workspace:*",
         "@lab/multiplayer-shared": "workspace:*",
         "@lab/sandbox-docker": "workspace:*",
+        "@opencode-ai/sdk": "^1.1.41",
         "drizzle-orm": "^0.38.0",
         "sodium-native": "^5.0.10",
         "zod": "^3.24.2",
@@ -455,6 +456,8 @@
     "@nodelib/fs.walk": ["@nodelib/fs.walk@1.2.8", "", { "dependencies": { "@nodelib/fs.scandir": "2.1.5", "fastq": "^1.6.0" } }, "sha512-oGB+UxlgWcgQkgwo8GcEGwemoTFt3FIO9ababBmaGwXIoBKZ+GTy0pP185beGg7Llih/NSHSV2XAs1lnznocSg=="],
 
     "@nolyfill/is-core-module": ["@nolyfill/is-core-module@1.0.39", "", {}, "sha512-nn5ozdjYQpUCZlWGuxcJY/KpxkWQs4DcbMCmKojjyrYDEAGy4Ce19NN4v5MduafTwJlbKc99UA8YhSVqq9yPZA=="],
+
+    "@opencode-ai/sdk": ["@opencode-ai/sdk@1.1.41", "", {}, "sha512-RXTyLl/2O/TM3Oag6JtGHVbK+SKb123szFm6JhvFuF1KCe4+86zjIjISYsaMKzgrd/fnkG0KEKUQxP8Y6xfrVw=="],
 
     "@oxc-resolver/binding-android-arm-eabi": ["@oxc-resolver/binding-android-arm-eabi@11.16.4", "", { "os": "android", "cpu": "arm" }, "sha512-6XUHilmj8D6Ggus+sTBp64x/DUQ7LgC/dvTDdUOt4iMQnDdSep6N1mnvVLIiG+qM5tRnNHravNzBJnUlYwRQoA=="],
 

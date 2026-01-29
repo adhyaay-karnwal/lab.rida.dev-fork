@@ -1,20 +1,9 @@
-import { db } from "@lab/database/client";
-import { providerApiKeys } from "@lab/database/schema/provider-api-keys";
-import { eq } from "drizzle-orm";
-import { encrypt } from "../utils/crypto";
+import { opencode } from "../opencode";
 import type { RouteHandler } from "../utils/route-handler";
 
 const GET: RouteHandler = async () => {
-  const providers = await db
-    .select({
-      id: providerApiKeys.id,
-      provider: providerApiKeys.provider,
-      createdAt: providerApiKeys.createdAt,
-      updatedAt: providerApiKeys.updatedAt,
-    })
-    .from(providerApiKeys);
-
-  return Response.json(providers);
+  const { data } = await opencode.provider.list();
+  return Response.json(data);
 };
 
 const POST: RouteHandler = async (request) => {
@@ -28,29 +17,15 @@ const POST: RouteHandler = async (request) => {
     return Response.json({ error: "apiKey is required" }, { status: 400 });
   }
 
-  const encryptedKey = encrypt(body.apiKey);
+  await opencode.auth.set({
+    providerID: body.provider,
+    auth: {
+      type: "api",
+      key: body.apiKey,
+    },
+  });
 
-  const [result] = await db
-    .insert(providerApiKeys)
-    .values({
-      provider: body.provider,
-      encryptedKey,
-    })
-    .onConflictDoUpdate({
-      target: providerApiKeys.provider,
-      set: {
-        encryptedKey,
-        updatedAt: new Date(),
-      },
-    })
-    .returning({
-      id: providerApiKeys.id,
-      provider: providerApiKeys.provider,
-      createdAt: providerApiKeys.createdAt,
-      updatedAt: providerApiKeys.updatedAt,
-    });
-
-  return Response.json(result, { status: 201 });
+  return Response.json({ provider: body.provider }, { status: 201 });
 };
 
 export { GET, POST };
