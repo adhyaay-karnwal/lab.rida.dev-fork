@@ -26,6 +26,7 @@ import {
   IconLabelItemLink,
 } from "./icon-label-item";
 import { LogsSection, type LogSource } from "./logs-section";
+import { BrowserStream } from "./browser-stream";
 
 type Branch = {
   id: string;
@@ -54,6 +55,9 @@ type ContainerInfo = {
 };
 
 type SessionSidebarProps = {
+  sessionId: string;
+  wsBaseUrl: string;
+  browserStreamReady?: boolean;
   branches: Branch[];
   tasks: Task[];
   links: Link[];
@@ -64,6 +68,9 @@ type SessionSidebarProps = {
 };
 
 export function SessionSidebar({
+  sessionId,
+  wsBaseUrl,
+  browserStreamReady = false,
   branches,
   tasks,
   links,
@@ -200,11 +207,7 @@ export function SessionSidebar({
           <Copy size="xs" muted className="px-2 py-1.5 block">
             Stream
           </Copy>
-          <div className="aspect-video bg-muted flex items-center justify-center">
-            <Copy size="xs" muted>
-              No stream
-            </Copy>
-          </div>
+          <BrowserStream sessionId={sessionId} wsBaseUrl={wsBaseUrl} enabled={browserStreamReady} />
         </div>
 
         <LogsSection sources={logSources} />

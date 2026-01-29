@@ -64,6 +64,9 @@ export type ChannelHandlers<TChannel extends ChannelConfig, TAuth> = {
   getSnapshot: (
     context: ChannelContext<TAuth, AnyParams>,
   ) => SnapshotOf<TChannel> | Promise<SnapshotOf<TChannel>>;
+
+  onSubscribe?: (context: ChannelContext<TAuth, AnyParams>) => void | Promise<void>;
+  onUnsubscribe?: (context: ChannelContext<TAuth, AnyParams>) => void | Promise<void>;
 };
 
 export type SchemaHandlers<S extends Schema, TAuth> = {
@@ -106,6 +109,11 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
   }
 
   async function handleSubscribe(ws: WS, channel: string): Promise<void> {
+    // Skip if already subscribed
+    if (ws.data.subscriptions.has(channel)) {
+      return;
+    }
+
     const match = findChannelMatch(channel);
     if (!match) {
       sendMessage(ws, { type: "error", channel, error: "Unknown channel" });
@@ -138,6 +146,10 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
     try {
       const snapshot = await handler.getSnapshot(context);
       sendMessage(ws, { type: "snapshot", channel, data: snapshot });
+
+      if (handler.onSubscribe) {
+        await handler.onSubscribe(context);
+      }
     } catch (err) {
       sendMessage(ws, {
         type: "error",
@@ -147,7 +159,23 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
     }
   }
 
-  function handleUnsubscribe(ws: WS, channel: string): void {
+  async function handleUnsubscribe(ws: WS, channel: string): Promise<void> {
+    const match = findChannelMatch(channel);
+    if (match) {
+      const handler = handlers[match.name];
+      if (handler?.onUnsubscribe) {
+        const context: ChannelContext<TAuth, Record<string, string>> = {
+          auth: ws.data.auth,
+          params: match.params,
+          ws,
+        };
+        try {
+          await handler.onUnsubscribe(context);
+        } catch (err) {
+          console.warn("Error in onUnsubscribe handler:", err);
+        }
+      }
+    }
     ws.data.subscriptions.delete(channel);
     ws.unsubscribe(channel);
   }
@@ -192,7 +220,7 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
             await handleSubscribe(ws, raw.channel);
             break;
           case "unsubscribe":
-            handleUnsubscribe(ws, raw.channel);
+            await handleUnsubscribe(ws, raw.channel);
             break;
           case "message":
             await handleMessage(ws, raw.data);
@@ -208,6 +236,20 @@ export function createWebSocketHandler<S extends Schema, TAuth>(
 
     close(ws: WS) {
       for (const channel of ws.data.subscriptions) {
+        const match = findChannelMatch(channel);
+        if (match) {
+          const handler = handlers[match.name];
+          if (handler?.onUnsubscribe) {
+            const context: ChannelContext<TAuth, Record<string, string>> = {
+              auth: ws.data.auth,
+              params: match.params,
+              ws,
+            };
+            handler.onUnsubscribe(context).catch((err) => {
+              console.warn("Error in onUnsubscribe handler during close:", err);
+            });
+          }
+        }
         ws.unsubscribe(channel);
       }
       ws.data.subscriptions.clear();

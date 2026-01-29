@@ -23,7 +23,9 @@ services:
       - postgres_data:/var/lib/postgresql/data
 
   opencode:
-    image: ghcr.io/anomalyco/opencode
+    build:
+      context: .
+      dockerfile: services/opencode/Dockerfile
     container_name: lab-opencode
     command:
       [
@@ -40,9 +42,13 @@ services:
     volumes:
       - ./opencode.json:/root/.config/opencode/opencode.json:ro
       - session_workspaces:/workspaces
+      - browser_sockets:/tmp/agent-browser-socket
+    environment:
+      AGENT_BROWSER_SOCKET_DIR: /tmp/agent-browser-socket
     depends_on:
       - postgres
       - mcp
+      - browser
 
   mcp:
     build:
@@ -70,11 +76,32 @@ services:
       CADDY_ADMIN_URL: "http://caddy:2019"
       CADDY_CONTAINER_NAME: "lab-caddy-proxy"
       PROXY_BASE_DOMAIN: "localhost:8080"
+      BROWSER_SOCKET_VOLUME: "lab_browser_sockets"
+      BROWSER_API_URL: "http://browser:80"
+      BROWSER_WS_HOST: "browser"
     depends_on:
       - postgres
       - opencode
       - caddy
+      - browser
+
+  browser:
+    build:
+      context: .
+      dockerfile: packages/browser/Dockerfile
+    image: lab-browser:latest
+    container_name: lab-browser
+    volumes:
+      - browser_sockets:/tmp/agent-browser-socket
+    environment:
+      AGENT_BROWSER_SOCKET_DIR: /tmp/agent-browser-socket
+      AGENT_BROWSER_SESSION: default
+      AGENT_BROWSER_STREAM_PORT: "9223"
+      BROWSER_API_PORT: "80"
+    ports:
+      - "9223-9300:9223-9300"
 
 volumes:
   postgres_data:
   session_workspaces:
+  browser_sockets:

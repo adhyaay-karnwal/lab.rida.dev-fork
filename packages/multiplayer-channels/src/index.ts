@@ -77,11 +77,18 @@ export const schema = defineSchema({
         z.object({
           id: z.string(),
           name: z.string(),
-          status: z.enum(["running", "stopped", "error"]),
+          status: z.enum(["running", "stopped", "starting", "error"]),
           urls: z.array(z.object({ port: z.number(), url: z.string() })),
         }),
       ),
       default: [],
+      delta: z.object({
+        type: z.enum(["update"]),
+        container: z.object({
+          id: z.string(),
+          status: z.enum(["running", "stopped", "starting", "error"]),
+        }),
+      }),
     }),
 
     sessionTyping: defineChannel({
@@ -159,6 +166,19 @@ export const schema = defineSchema({
         content: z.string(),
         timestamp: z.number(),
         senderId: z.string(),
+      }),
+    }),
+
+    sessionBrowserStream: defineChannel({
+      path: "session/{uuid}/browser-stream",
+      snapshot: z.object({
+        ready: z.boolean(),
+        streamPort: z.number().optional(),
+      }),
+      default: { ready: false },
+      delta: z.object({
+        ready: z.boolean(),
+        streamPort: z.number().optional(),
       }),
     }),
   },

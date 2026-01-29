@@ -66,8 +66,10 @@ export async function startContainerMonitor(): Promise<void> {
         { uuid: sessionId },
         {
           type: "update",
-          id: sessionContainer.id,
-          status,
+          container: {
+            id: sessionContainer.id,
+            status,
+          },
         },
       );
     }

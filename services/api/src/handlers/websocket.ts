@@ -12,6 +12,8 @@ import { containers } from "@lab/database/schema/containers";
 import { containerPorts } from "@lab/database/schema/container-ports";
 import { eq } from "drizzle-orm";
 import { publisher } from "../publisher";
+import { opencode } from "../opencode";
+import { browserClient, ensureBrowserSession } from "../browser";
 
 const PROXY_BASE_DOMAIN = process.env.PROXY_BASE_DOMAIN;
 if (!PROXY_BASE_DOMAIN) throw new Error("PROXY_BASE_DOMAIN must be defined");
@@ -25,6 +27,12 @@ type Schema = typeof schema;
 type ContainerStatus = "running" | "stopped" | "starting" | "error";
 const isContainerStatus = (status: string): status is ContainerStatus =>
   status === "running" || status === "stopped" || status === "starting" || status === "error";
+
+function getChangeType(before: string, after: string): "modified" | "created" | "deleted" {
+  if (!before && after) return "created";
+  if (before && !after) return "deleted";
+  return "modified";
+}
 
 const handlers: SchemaHandlers<Schema, Auth> = {
   projects: {
@@ -97,7 +105,33 @@ const handlers: SchemaHandlers<Schema, Auth> = {
     getSnapshot: async () => [],
   },
   sessionChangedFiles: {
-    getSnapshot: async () => [],
+    getSnapshot: async ({ params }) => {
+      const session = await db
+        .select({ opencodeSessionId: sessions.opencodeSessionId })
+        .from(sessions)
+        .where(eq(sessions.id, params.uuid))
+        .limit(1);
+
+      if (!session[0]?.opencodeSessionId) return [];
+
+      try {
+        const response = await opencode.session.diff({
+          sessionID: session[0].opencodeSessionId,
+        });
+
+        if (!response.data) return [];
+
+        return response.data.map((diff) => ({
+          path: diff.file,
+          originalContent: diff.before,
+          currentContent: diff.after,
+          status: "pending" as const,
+          changeType: getChangeType(diff.before, diff.after),
+        }));
+      } catch {
+        return [];
+      }
+    },
   },
   sessionBranches: {
     getSnapshot: async () => [],
@@ -110,6 +144,22 @@ const handlers: SchemaHandlers<Schema, Auth> = {
   },
   sessionMessages: {
     getSnapshot: async () => [],
+  },
+  sessionBrowserStream: {
+    getSnapshot: async ({ params }) => {
+      if (!browserClient) {
+        return { ready: false };
+      }
+      const streamPort = await browserClient.getStreamPort(params.uuid);
+      return {
+        ready: streamPort !== null,
+        streamPort: streamPort ?? undefined,
+      };
+    },
+    onSubscribe: ({ params }) => {
+      // Start browser if not running - callback will publish ready state
+      ensureBrowserSession(params.uuid);
+    },
   },
 };
 

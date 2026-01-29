@@ -5,6 +5,7 @@ import { eq } from "drizzle-orm";
 import { DockerClient } from "@lab/sandbox-docker";
 import { proxyManager, isProxyInitialized } from "../../proxy";
 import { publisher } from "../../publisher";
+import { cleanupBrowserSession } from "../../browser";
 
 import type { RouteHandler } from "../../utils/route-handler";
 
@@ -26,6 +27,9 @@ const GET: RouteHandler = async (_request, params) => {
 
   const containersWithStatus = await Promise.all(
     containers.map(async (container) => {
+      if (!container.dockerId) {
+        return { ...container, info: null };
+      }
       const info = await docker.inspectContainer(container.dockerId);
       return { ...container, info };
     }),
@@ -75,22 +79,28 @@ const DELETE: RouteHandler = async (_request, params) => {
     .where(eq(sessionContainers.sessionId, sessionId));
 
   await Promise.all(
-    containers.map(async (container) => {
-      await docker.stopContainer(container.dockerId);
-      await docker.removeContainer(container.dockerId);
-    }),
+    containers
+      .filter((container) => container.dockerId)
+      .map(async (container) => {
+        await docker.stopContainer(container.dockerId);
+        await docker.removeContainer(container.dockerId);
+      }),
   );
 
   const networkName = `lab-${sessionId}`;
+
+  await cleanupBrowserSession(sessionId);
 
   if (isProxyInitialized()) {
     try {
       await proxyManager.unregisterCluster(sessionId);
     } catch {
-      const caddyContainerName = process.env.CADDY_CONTAINER_NAME;
-      if (caddyContainerName) {
-        await docker.disconnectFromNetwork(caddyContainerName, networkName);
-      }
+      try {
+        const caddyContainerName = process.env.CADDY_CONTAINER_NAME;
+        if (caddyContainerName) {
+          await docker.disconnectFromNetwork(caddyContainerName, networkName);
+        }
+      } catch {}
     }
   }
 

@@ -1,0 +1,16 @@
+{
+  "name": "@lab/browser",
+  "version": "0.1.0",
+  "type": "module",
+  "scripts": {
+    "start": "bun src/entrypoint.ts",
+    "types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "agent-browser": "^0.8.4"
+  },
+  "devDependencies": {
+    "bun-types": "^1.2.11",
+    "typescript": "^5"
+  }
+}

@@ -26,6 +26,7 @@ export default function SessionPage() {
   const links = useChannel("sessionLinks", { uuid: sessionId });
   const logSources = useChannel("sessionLogs", { uuid: sessionId });
   const sessionContainers = useChannel("sessionContainers", { uuid: sessionId });
+  const browserStream = useChannel("sessionBrowserStream", { uuid: sessionId });
 
   const [localReviewFiles, setLocalReviewFiles] = useState<ReviewableFile[]>([]);
   const reviewFiles = changedFiles.length > 0 ? changedFiles : localReviewFiles;
@@ -73,8 +74,13 @@ export default function SessionPage() {
           urls,
         }))}
         labSessionId={sessionId}
+        wsBaseUrl={process.env.NEXT_PUBLIC_WS_URL}
+        browserStreamReady={browserStream.ready}
       />
       <SessionSidebar
+        sessionId={sessionId}
+        wsBaseUrl={process.env.NEXT_PUBLIC_WS_URL ?? ""}
+        browserStreamReady={browserStream.ready}
         branches={branches}
         tasks={[]}
         links={links}

@@ -22,6 +22,7 @@ import type { ReviewableFile } from "@/types/review";
 import { MessageBlock } from "./message-block";
 import { OpencodeParts } from "./opencode-parts";
 import { OpencodePermissionDialog } from "./opencode-permission-dialog";
+import { BrowserStream } from "./browser-stream";
 import {
   ChatInput,
   ChatInputTextarea,
@@ -76,6 +77,8 @@ type SessionViewProps = {
   links?: Link[];
   containers?: ContainerInfo[];
   labSessionId: string;
+  wsBaseUrl?: string;
+  browserStreamReady?: boolean;
 };
 
 export function SessionView({
@@ -97,6 +100,8 @@ export function SessionView({
   links = [],
   containers = [],
   labSessionId,
+  wsBaseUrl,
+  browserStreamReady = false,
 }: SessionViewProps) {
   const [inputValue, setInputValue] = useState("");
   const [activeFrameTab, setActiveFrameTab] = useState<string | undefined>(undefined);
@@ -323,14 +328,20 @@ export function SessionView({
           })()}
         </TabsContent>
         <TabsContent value="stream" className="flex-1 flex flex-col min-h-0">
-          {streamUrl && (
-            <div className="p-2 border-b border-border">
-              <UrlBar url={streamUrl} onRefresh={onStreamRefresh} />
+          {wsBaseUrl ? (
+            <div className="flex-1 flex items-center justify-center p-4">
+              <BrowserStream
+                sessionId={labSessionId}
+                wsBaseUrl={wsBaseUrl}
+                className="w-full max-w-4xl"
+                enabled={browserStreamReady}
+              />
+            </div>
+          ) : (
+            <div className="flex-1 flex items-center justify-center">
+              <Copy muted>Stream not configured</Copy>
             </div>
           )}
-          <div className="flex-1 flex items-center justify-center">
-            <Copy muted>Stream view coming soon</Copy>
-          </div>
         </TabsContent>
       </Tabs>
     </>

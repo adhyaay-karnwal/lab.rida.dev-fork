@@ -11,6 +11,24 @@ import type {
   ExecResult,
 } from "@lab/sdk";
 
+export type DockerContainerEventAction =
+  | "start"
+  | "stop"
+  | "die"
+  | "kill"
+  | "restart"
+  | "pause"
+  | "unpause"
+  | "oom"
+  | "health_status";
+
+export interface DockerContainerEvent {
+  containerId: string;
+  action: DockerContainerEventAction;
+  attributes: Record<string, string>;
+  time: number;
+}
+
 const VALID_CONTAINER_STATES: readonly string[] = [
   "created",
   "running",
@@ -380,6 +398,41 @@ export class DockerClient implements SandboxProvider {
       stdout: Buffer.concat(stdout).toString("utf-8"),
       stderr: Buffer.concat(stderr).toString("utf-8"),
     };
+  }
+
+  async *streamContainerEvents(options?: {
+    filters?: { label?: string[] };
+  }): AsyncGenerator<DockerContainerEvent> {
+    const filters: Record<string, string[]> = {
+      type: ["container"],
+      event: ["start", "stop", "die", "kill", "restart", "pause", "unpause", "oom", "health_status"],
+    };
+
+    if (options?.filters?.label) {
+      filters.label = options.filters.label;
+    }
+
+    const stream = await this.docker.getEvents({ filters });
+
+    for await (const chunk of stream) {
+      const data = typeof chunk === "string" ? chunk : chunk.toString("utf-8");
+      for (const line of data.split("\n")) {
+        if (!line.trim()) continue;
+        try {
+          const event = JSON.parse(line);
+          if (event.Type !== "container") continue;
+
+          yield {
+            containerId: event.id ?? event.Actor?.ID,
+            action: event.Action as DockerContainerEventAction,
+            attributes: event.Actor?.Attributes ?? {},
+            time: event.time ?? Math.floor(Date.now() / 1000),
+          };
+        } catch (error) {
+          console.error("Failed to parse Docker event:", error);
+        }
+      }
+    }
   }
 }
 

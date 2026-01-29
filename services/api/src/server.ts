@@ -1,6 +1,12 @@
 import { type WebSocketData } from "@lab/multiplayer-server";
 import { websocketHandler, upgrade, type Auth } from "./handlers/websocket";
 import { handleOpenCodeProxy } from "./handlers/opencode-proxy";
+import {
+  handleBrowserStreamUpgrade,
+  browserStreamHandler,
+  type BrowserStreamData,
+} from "./handlers/browser-stream";
+import { handleBrowserReadyCallback } from "./handlers/browser-ready";
 import { isHttpMethod, isRouteModule } from "./utils/route-handler";
 import { join } from "node:path";
 
@@ -32,15 +38,49 @@ if (port === undefined) {
   throw Error("API_PORT must be defined");
 }
 
-export const server = Bun.serve<WebSocketData<Auth>>({
+type CombinedWebSocketData = WebSocketData<Auth> | BrowserStreamData;
+
+function isBrowserStreamData(data: CombinedWebSocketData): data is BrowserStreamData {
+  return "type" in data && data.type === "browser-stream";
+}
+
+const combinedWebsocketHandler = {
+  open(ws: any) {
+    if (isBrowserStreamData(ws.data)) {
+      browserStreamHandler.open(ws);
+    } else {
+      websocketHandler.open(ws);
+    }
+  },
+  message(ws: any, message: string | Buffer) {
+    if (isBrowserStreamData(ws.data)) {
+      browserStreamHandler.message(ws, message);
+    } else {
+      websocketHandler.message(ws, message);
+    }
+  },
+  close(ws: any, code: number, reason: string) {
+    if (isBrowserStreamData(ws.data)) {
+      browserStreamHandler.close(ws);
+    } else {
+      websocketHandler.close(ws, code, reason);
+    }
+  },
+};
+
+export const server = Bun.serve<CombinedWebSocketData>({
   port,
   idleTimeout: 0,
-  websocket: websocketHandler,
+  websocket: combinedWebsocketHandler,
   async fetch(request): Promise<Response | undefined> {
     const url = new URL(request.url);
 
     if (request.method === "OPTIONS") {
       return new Response(null, { status: 204, headers: corsHeaders });
+    }
+
+    if (url.pathname === "/ws/browser") {
+      return handleBrowserStreamUpgrade(request, server);
     }
 
     if (url.pathname === "/ws") {
@@ -49,6 +89,10 @@ export const server = Bun.serve<WebSocketData<Auth>>({
 
     if (url.pathname.startsWith("/opencode/")) {
       return handleOpenCodeProxy(request, url);
+    }
+
+    if (url.pathname === "/internal/browser-ready" && request.method === "POST") {
+      return handleBrowserReadyCallback(request);
     }
 
     const match = router.match(request);

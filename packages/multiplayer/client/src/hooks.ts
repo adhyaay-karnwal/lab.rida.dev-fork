@@ -170,63 +170,65 @@ export function createHooks<
   };
 }
 
-interface ItemWithId {
-  id: unknown;
-  [key: string]: unknown;
-}
+type DeltaType = "add" | "update" | "remove" | "append";
+type IdentifiableItem = Record<string, unknown> & { id?: unknown; path?: unknown };
 
-function isDeltaObject(value: unknown): value is Record<string, unknown> {
+function isObject(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null;
 }
 
-function isItemWithId(value: unknown): value is ItemWithId {
-  return typeof value === "object" && value !== null && "id" in value;
+function isIdentifiable(value: unknown): value is IdentifiableItem {
+  return isObject(value) && ("id" in value || "path" in value);
 }
 
-function getItem(delta: Record<string, unknown>): unknown {
+function getKey(item: IdentifiableItem): unknown {
+  return item.id ?? item.path;
+}
+
+function extractItem(delta: Record<string, unknown>): IdentifiableItem | undefined {
   for (const [key, value] of Object.entries(delta)) {
-    if (key !== "type" && isItemWithId(value)) {
-      return value;
-    }
+    if (key !== "type" && isIdentifiable(value)) return value;
   }
-  return undefined;
+}
+
+function applyArrayDelta(array: unknown[], delta: Record<string, unknown>): unknown[] {
+  const type = delta.type as DeltaType;
+  const item = extractItem(delta);
+
+  switch (type) {
+    case "append":
+      return "message" in delta ? [...array, delta.message] : array;
+
+    case "add":
+      return item ? [...array, item] : array;
+
+    case "remove": {
+      if (!item) return array;
+      const key = getKey(item);
+      return array.filter((el) => !isIdentifiable(el) || getKey(el) !== key);
+    }
+
+    case "update": {
+      if (!item) return array;
+      const key = getKey(item);
+      return array.map((el) =>
+        isIdentifiable(el) && getKey(el) === key ? { ...el, ...item } : el,
+      );
+    }
+
+    default:
+      return array;
+  }
 }
 
 function applyDelta(current: unknown, delta: unknown, channel: ChannelConfig): unknown {
-  if (!channel.delta) return current;
+  if (!channel.delta || !isObject(delta)) return current;
 
-  if (Array.isArray(current) && isDeltaObject(delta)) {
-    if (delta.type === "append" && "message" in delta) {
-      return [...current, delta.message];
-    }
-
-    if (delta.type === "add") {
-      const item = getItem(delta);
-      if (item) {
-        return [...current, item];
-      }
-    }
-
-    if (delta.type === "remove") {
-      const item = getItem(delta);
-      if (isItemWithId(item)) {
-        return current.filter(
-          (element: unknown) => !isItemWithId(element) || element.id !== item.id,
-        );
-      }
-    }
-
-    if (delta.type === "update") {
-      const item = getItem(delta);
-      if (isItemWithId(item)) {
-        return current.map((element: unknown) =>
-          isItemWithId(element) && element.id === item.id ? { ...element, ...item } : element,
-        );
-      }
-    }
+  if (Array.isArray(current)) {
+    return applyArrayDelta(current, delta);
   }
 
-  if (typeof current === "object" && current !== null && isDeltaObject(delta)) {
+  if (isObject(current)) {
     return { ...current, ...delta };
   }
 
