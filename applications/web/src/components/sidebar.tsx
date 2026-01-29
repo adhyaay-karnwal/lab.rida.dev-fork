@@ -1,10 +1,10 @@
 "use client";
 
-import { type ReactNode } from "react";
+import { type ReactNode, type MouseEvent } from "react";
 import { cn } from "@lab/ui/utils/cn";
 import { Copy } from "@lab/ui/components/copy";
 import { Button } from "@lab/ui/components/button";
-import { ChevronRight, Plus, Box, Loader2 } from "lucide-react";
+import { ChevronRight, Plus, Box, Loader2, Trash2 } from "lucide-react";
 
 type SidebarProps = {
   children: ReactNode;
@@ -106,6 +106,7 @@ type SidebarSessionProps = {
   isWorking?: boolean;
   active?: boolean;
   onClick?: () => void;
+  onDelete?: () => void;
   timestamp?: string;
 };
 
@@ -115,14 +116,27 @@ export function SidebarSession({
   isWorking,
   active,
   onClick,
+  onDelete,
   timestamp,
 }: SidebarSessionProps) {
+  const handleDeleteClick = (event: MouseEvent) => {
+    event.stopPropagation();
+    onDelete?.();
+  };
+
+  const handleDeleteKeyDown = (event: React.KeyboardEvent) => {
+    if (event.key === "Enter" || event.key === " ") {
+      event.stopPropagation();
+      onDelete?.();
+    }
+  };
+
   return (
     <button
       type="button"
       onClick={onClick}
       className={cn(
-        "flex items-center gap-2 w-full px-2 py-1 text-left text-muted-foreground",
+        "group flex items-center gap-2 w-full px-2 py-1 text-left text-muted-foreground",
         active ? "bg-muted" : "hover:bg-muted/50",
       )}
     >
@@ -133,6 +147,17 @@ export function SidebarSession({
         <Copy as="span" size="xs" muted>
           {timestamp}
         </Copy>
+      )}
+      {onDelete && (
+        <span
+          role="button"
+          tabIndex={0}
+          onClick={handleDeleteClick}
+          onKeyDown={handleDeleteKeyDown}
+          className="opacity-0 group-hover:opacity-100 hover:text-destructive transition-opacity"
+        >
+          <Trash2 className="size-3" />
+        </span>
       )}
       <span className="grid size-3 place-items-center">
         <Loader2

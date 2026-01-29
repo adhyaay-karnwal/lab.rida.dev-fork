@@ -22,9 +22,9 @@ export interface Auth {
 
 type Schema = typeof schema;
 
-type ContainerStatus = "running" | "stopped" | "error";
+type ContainerStatus = "running" | "stopped" | "starting" | "error";
 const isContainerStatus = (status: string): status is ContainerStatus =>
-  status === "running" || status === "stopped" || status === "error";
+  status === "running" || status === "stopped" || status === "starting" || status === "error";
 
 const handlers: SchemaHandlers<Schema, Auth> = {
   projects: {

@@ -78,6 +78,11 @@ export function createClient(config: ClientConfig) {
           method: "PATCH",
           body: JSON.stringify(data),
         }),
+
+      delete: (sessionId: string) =>
+        request<void>(`/sessions/${sessionId}`, {
+          method: "DELETE",
+        }),
     },
 
     models: {

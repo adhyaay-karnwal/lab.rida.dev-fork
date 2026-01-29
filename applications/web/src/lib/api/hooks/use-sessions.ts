@@ -31,3 +31,34 @@ export function useCreateSession(projectId: string): UseCreateSessionResult {
 
   return { createSession, isLoading, error };
 }
+
+interface UseDeleteSessionResult {
+  deleteSession: (sessionId: string) => Promise<void>;
+  isDeleting: boolean;
+  error: Error | null;
+}
+
+export function useDeleteSession(): UseDeleteSessionResult {
+  const client = useApiClient();
+  const [isDeleting, setIsDeleting] = useState(false);
+  const [error, setError] = useState<Error | null>(null);
+
+  const deleteSession = useCallback(
+    async (sessionId: string): Promise<void> => {
+      setIsDeleting(true);
+      setError(null);
+      try {
+        await client.sessions.delete(sessionId);
+      } catch (err) {
+        const error = err instanceof Error ? err : new Error("Failed to delete session");
+        setError(error);
+        throw error;
+      } finally {
+        setIsDeleting(false);
+      }
+    },
+    [client],
+  );
+
+  return { deleteSession, isDeleting, error };
+}

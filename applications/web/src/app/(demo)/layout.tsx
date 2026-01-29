@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import { useParams, useRouter } from "next/navigation";
 import {
   Sidebar,
@@ -15,6 +16,15 @@ import {
 } from "@/components/sidebar";
 import { Avatar } from "@lab/ui/components/avatar";
 import { Copy } from "@lab/ui/components/copy";
+import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogActions,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@lab/ui/components/alert-dialog";
 import { X, Settings, ChevronDown, FolderKanban, Cpu, GitBranch } from "lucide-react";
 import {
   Dropdown,
@@ -26,7 +36,7 @@ import {
 import { Box } from "lucide-react";
 import type { ReactNode } from "react";
 import { useMultiplayer } from "@/lib/multiplayer/client";
-import { useCreateSession, OpenCodeEventsProvider } from "@/lib/api";
+import { useCreateSession, useDeleteSession, OpenCodeEventsProvider } from "@/lib/api";
 
 interface ProjectSessionsPanelProps {
   project: { id: string; name: string };
@@ -37,10 +47,21 @@ interface ProjectSessionsPanelProps {
 function ProjectSessionsPanel({ project, sessions, activeSessionId }: ProjectSessionsPanelProps) {
   const router = useRouter();
   const { createSession } = useCreateSession(project.id);
+  const { deleteSession, isDeleting } = useDeleteSession();
+  const [sessionToDelete, setSessionToDelete] = useState<string | null>(null);
 
   const handleNewSession = async () => {
     const session = await createSession();
     router.push(`/${project.id}/${session.id}`);
+  };
+
+  const handleDelete = async () => {
+    if (!sessionToDelete) return;
+    await deleteSession(sessionToDelete);
+    if (activeSessionId === sessionToDelete) {
+      router.push(`/${project.id}`);
+    }
+    setSessionToDelete(null);
   };
 
   return (
@@ -60,9 +81,24 @@ function ProjectSessionsPanel({ project, sessions, activeSessionId }: ProjectSes
             isWorking={session.isWorking}
             active={activeSessionId === session.id}
             onClick={() => router.push(`/${project.id}/${session.id}`)}
+            onDelete={() => setSessionToDelete(session.id)}
           />
         ))}
       </SidebarBody>
+      <AlertDialog open={Boolean(sessionToDelete)} onOpenChange={() => setSessionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogTitle>Delete session?</AlertDialogTitle>
+          <AlertDialogDescription>
+            This will stop all containers and permanently delete this session.
+          </AlertDialogDescription>
+          <AlertDialogActions>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction variant="destructive" onClick={handleDelete} loading={isDeleting}>
+              Delete
+            </AlertDialogAction>
+          </AlertDialogActions>
+        </AlertDialogContent>
+      </AlertDialog>
     </SidebarPanel>
   );
 }

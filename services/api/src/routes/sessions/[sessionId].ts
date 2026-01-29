@@ -3,6 +3,8 @@ import { sessions } from "@lab/database/schema/sessions";
 import { sessionContainers } from "@lab/database/schema/session-containers";
 import { eq } from "drizzle-orm";
 import { DockerClient } from "@lab/sandbox-docker";
+import { proxyManager, isProxyInitialized } from "../../proxy";
+import { publisher } from "../../publisher";
 
 import type { RouteHandler } from "../../utils/route-handler";
 
@@ -79,7 +81,25 @@ const DELETE: RouteHandler = async (_request, params) => {
     }),
   );
 
+  if (isProxyInitialized()) {
+    try {
+      await proxyManager.unregisterCluster(sessionId);
+    } catch {}
+  }
+
+  const networkName = `lab-${sessionId}`;
+  await docker.removeNetwork(networkName);
+
   await db.delete(sessions).where(eq(sessions.id, sessionId));
+
+  publisher.publishDelta("sessions", {
+    type: "remove",
+    session: {
+      id: session.id,
+      projectId: session.projectId,
+      title: session.id.slice(0, 8),
+    },
+  });
 
   return new Response(null, { status: 204 });
 };
