@@ -194,4 +194,9 @@ export class AgentSession extends EventEmitter {
   stop(): void {
     this.isProcessing = false;
   }
+
+  destroy(): void {
+    this.stop();
+    this.removeAllListeners();
+  }
 }

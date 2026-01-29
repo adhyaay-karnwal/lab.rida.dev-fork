@@ -1,6 +1,6 @@
 import { z } from "zod";
 import type { RouteHandler } from "../../../../utils/route-handler";
-import { agentManager } from "../../../../agent";
+import { getAgentSession } from "../../../../agent";
 
 const MessageBodySchema = z.object({
   message: z.string().min(1),
@@ -9,7 +9,7 @@ const MessageBodySchema = z.object({
 const POST: RouteHandler = async (request, params) => {
   const { sessionId } = params;
 
-  const session = agentManager.getSession(sessionId);
+  const session = getAgentSession(sessionId);
   if (!session) {
     return Response.json({ error: "Agent not started for this session" }, { status: 404 });
   }

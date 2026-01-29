@@ -34,7 +34,7 @@ export class AgentManager {
       return false;
     }
 
-    session.stop();
+    session.destroy();
     this.sessions.delete(sessionId);
     return true;
   }

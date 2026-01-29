@@ -7,13 +7,17 @@ import { projects } from "@lab/database/schema/projects";
 import { eq } from "drizzle-orm";
 
 import type { RouteHandler } from "../../../utils/route-handler";
-import { agentManager } from "../../../agent";
-import { publisher } from "../../../index";
+import {
+  createAgentSession,
+  getAgentSession,
+  hasAgentSession,
+  destroyAgentSession,
+} from "../../../agent";
 
 const GET: RouteHandler = async (_request, params) => {
   const { sessionId } = params;
 
-  const session = agentManager.getSession(sessionId);
+  const session = getAgentSession(sessionId);
   if (!session) {
     return Response.json({ active: false });
   }
@@ -28,7 +32,7 @@ const GET: RouteHandler = async (_request, params) => {
 const POST: RouteHandler = async (_request, params) => {
   const { sessionId } = params;
 
-  if (agentManager.hasSession(sessionId)) {
+  if (hasAgentSession(sessionId)) {
     return Response.json({ error: "Agent already started for this session" }, { status: 409 });
   }
 
@@ -48,63 +52,32 @@ const POST: RouteHandler = async (_request, params) => {
     .where(eq(sessionContainers.sessionId, sessionId));
 
   const agentContainers = await Promise.all(
-    sessionContainerRows.map(async (sc) => {
+    sessionContainerRows.map(async (sessionController) => {
       const [container] = await db
         .select()
         .from(containers)
-        .where(eq(containers.id, sc.containerId));
+        .where(eq(containers.id, sessionController.containerId));
 
       const [perms] = await db
         .select()
         .from(containerPermissions)
-        .where(eq(containerPermissions.containerId, sc.containerId));
+        .where(eq(containerPermissions.containerId, sessionController.containerId));
 
       return {
-        id: sc.id,
-        containerId: sc.containerId,
-        dockerId: sc.dockerId,
+        id: sessionController.id,
+        containerId: sessionController.containerId,
+        dockerId: sessionController.dockerId,
         hostname: container?.hostname ?? undefined,
         permissions: perms?.permissions ?? [],
       };
     }),
   );
 
-  const agentSession = agentManager.createSession({
+  createAgentSession({
     sessionId,
     projectId: session.projectId,
     systemPrompt: project.systemPrompt ?? undefined,
     containers: agentContainers,
-  });
-
-  agentSession.on("token", (content) => {
-    publisher.publishEvent("sessionStream", { uuid: sessionId }, { type: "token", content });
-  });
-
-  agentSession.on("message", (message) => {
-    publisher.publishDelta("sessionMessages", { uuid: sessionId }, { type: "append", message });
-  });
-
-  agentSession.on("toolStart", (tool) => {
-    publisher.publishDelta("sessionAgentTools", { uuid: sessionId }, { type: "add", tool });
-  });
-
-  agentSession.on("toolEnd", (tool) => {
-    publisher.publishDelta("sessionAgentTools", { uuid: sessionId }, { type: "update", tool });
-  });
-
-  agentSession.on("complete", () => {
-    publisher.publishEvent("sessionStream", { uuid: sessionId }, { type: "complete" });
-  });
-
-  agentSession.on("error", (error) => {
-    publisher.publishEvent(
-      "sessionStream",
-      { uuid: sessionId },
-      {
-        type: "error",
-        content: error.message,
-      },
-    );
   });
 
   return Response.json({ started: true }, { status: 201 });
@@ -113,7 +86,8 @@ const POST: RouteHandler = async (_request, params) => {
 const DELETE: RouteHandler = async (_request, params) => {
   const { sessionId } = params;
 
-  const destroyed = agentManager.destroySession(sessionId);
+  const destroyed = destroyAgentSession(sessionId);
+
   if (!destroyed) {
     return Response.json({ error: "No agent session found" }, { status: 404 });
   }

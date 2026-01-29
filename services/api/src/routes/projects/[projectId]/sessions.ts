@@ -6,10 +6,10 @@ import { sessions } from "@lab/database/schema/sessions";
 import { sessionContainers } from "@lab/database/schema/session-containers";
 import { eq } from "drizzle-orm";
 import { DockerClient } from "@lab/sandbox-docker";
-import { publisher } from "../../../index";
 import { proxyManager, isProxyInitialized, ensureProxyInitialized } from "../../../proxy";
 
 import type { RouteHandler } from "../../../utils/route-handler";
+import { publisher } from "../../../publisher";
 
 const docker = new DockerClient();
 

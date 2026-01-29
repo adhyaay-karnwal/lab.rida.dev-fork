@@ -99,7 +99,7 @@ export default function ProvidersPage() {
                   </span>
                   <ChevronDown className="size-3" />
                 </DropdownTrigger>
-                <DropdownMenu className="w-[var(--radix-dropdown-menu-trigger-width)]">
+                <DropdownMenu className="w-(--radix-dropdown-menu-trigger-width)">
                   {availableProviders.map((provider) => (
                     <DropdownItem
                       key={provider.id}
