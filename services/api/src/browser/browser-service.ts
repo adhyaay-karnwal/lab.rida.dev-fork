@@ -6,7 +6,7 @@ import {
   type DaemonController,
   type FrameReceiver,
   createOrchestrator,
-} from "@lab/browser-orchestration";
+} from "@lab/browser-protocol";
 import { createFrameReceiver } from "./frame-receiver";
 
 export interface BrowserServiceConfig {

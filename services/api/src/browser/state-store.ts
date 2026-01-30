@@ -10,7 +10,7 @@ import {
   CurrentState,
   sessionNotFound,
   validationFailed,
-} from "@lab/browser-orchestration";
+} from "@lab/browser-protocol";
 
 const mapDbToState = (session: typeof browserSessions.$inferSelect): BrowserSessionState => ({
   sessionId: session.sessionId,

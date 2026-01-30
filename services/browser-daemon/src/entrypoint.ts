@@ -10,12 +10,11 @@ import {
 } from "./daemon-manager";
 
 const API_PORT = parseInt(process.env.BROWSER_API_PORT ?? "80", 10);
-const DEFAULT_STREAM_PORT = parseInt(process.env.AGENT_BROWSER_STREAM_PORT ?? "9224", 10);
 const SOCKET_DIR = getSocketDir();
 
 console.log(`Socket directory: ${SOCKET_DIR}`);
 
-await startSessionDaemon("default", { streamPort: DEFAULT_STREAM_PORT });
+await startSessionDaemon("default");
 
 async function runAgentBrowser(sessionId: string, args: string[]): Promise<string> {
   const proc = Bun.spawn(["bunx", "agent-browser", ...args], {
@@ -129,15 +128,15 @@ Bun.serve({
         return Response.json({ error: "Session ID required" }, { status: 400 });
       }
 
-      let streamPort: number | undefined;
+      let url: string | undefined;
       try {
         const body = await req.json();
-        streamPort = body.streamPort;
+        url = body.url;
       } catch {
         // No body or invalid JSON is fine
       }
 
-      const result = await startSessionDaemon(sessionId, { streamPort });
+      const result = await startSessionDaemon(sessionId, { url });
       return Response.json(result);
     }
 

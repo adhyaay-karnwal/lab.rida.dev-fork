@@ -1,8 +1,4 @@
-import {
-  FrameResponse,
-  type FrameReceiver,
-  type FrameReceiverConfig,
-} from "@lab/browser-orchestration";
+import { FrameResponse, type FrameReceiver, type FrameReceiverConfig } from "@lab/browser-protocol";
 
 export type { FrameReceiver, FrameReceiverConfig };
 

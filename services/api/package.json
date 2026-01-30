@@ -9,7 +9,7 @@
     "format": "oxfmt ."
   },
   "dependencies": {
-    "@lab/browser-orchestration": "workspace:*",
+    "@lab/browser-protocol": "workspace:*",
     "@lab/database": "workspace:*",
     "@lab/multiplayer-channels": "workspace:*",
     "@lab/multiplayer-sdk": "workspace:*",

@@ -12,7 +12,7 @@
     "types": "tsc --noEmit"
   },
   "dependencies": {
-    "@lab/sdk": "workspace:*",
+    "@lab/sandbox-sdk": "workspace:*",
     "dockerode": "^4.0.4"
   },
   "devDependencies": {

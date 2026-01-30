@@ -2,7 +2,7 @@ import {
   type BrowserSessionState,
   type DaemonController,
   type StateStore,
-} from "@lab/browser-orchestration";
+} from "@lab/browser-protocol";
 import { createBrowserService, type BrowserService } from "./browser-service";
 import {
   getState,

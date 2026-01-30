@@ -9,7 +9,7 @@ import type {
   NetworkCreateOptions,
   ExecOptions,
   ExecResult,
-} from "@lab/sdk";
+} from "@lab/sandbox-sdk";
 
 export type DockerContainerEventAction =
   | "start"

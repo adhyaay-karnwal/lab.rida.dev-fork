@@ -1,22 +1,27 @@
 {
-  "name": "@lab/sdk",
+  "name": "@lab/browser-protocol",
   "version": "0.1.0",
   "type": "module",
   "typesVersions": {
     "*": {
-      "*": [
-        "src/*"
-      ]
+      "*": ["src/*"]
     }
   },
   "exports": {
     ".": {
       "types": "./src/index.ts",
       "default": "./src/index.ts"
+    },
+    "./*": {
+      "types": "./src/*.ts",
+      "default": "./src/*.ts"
     }
   },
   "scripts": {
     "types": "tsc --noEmit"
+  },
+  "dependencies": {
+    "zod": "^3.24.2"
   },
   "devDependencies": {
     "typescript": "^5"

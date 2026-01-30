@@ -116,18 +116,14 @@ export function getActiveSessions(): Array<{ sessionId: string; port: number; re
 
 export async function startSessionDaemon(
   sessionId: string,
-  options: { streamPort?: number } = {},
+  options: { url?: string } = {},
 ): Promise<{ type: "started" | "already_running"; sessionId: string; port: number; ready: boolean }> {
   const existing = activeSessions.get(sessionId);
   if (existing) {
     return { type: "already_running", sessionId, port: existing.port, ready: existing.ready };
   }
 
-  const port = options.streamPort ?? allocatePort();
-
-  if (port >= nextStreamPort) {
-    nextStreamPort = port + 1;
-  }
+  const port = allocatePort();
 
   activeSessions.set(sessionId, { port, ready: false });
 

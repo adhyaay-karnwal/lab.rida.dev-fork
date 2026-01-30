@@ -1,5 +1,5 @@
 import { createServer } from "net";
-import type { PortAllocator as IPortAllocator, PortAllocatorOptions } from "@lab/sdk";
+import type { PortAllocator as IPortAllocator, PortAllocatorOptions } from "@lab/sandbox-sdk";
 
 export class PortAllocator implements IPortAllocator {
   private minPort: number;

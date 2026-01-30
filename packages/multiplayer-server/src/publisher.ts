@@ -20,7 +20,7 @@ type ChannelName<S extends AnySchema> = keyof S["channels"] & string;
 
 type PathOf<C> = C extends { path: infer P extends string } ? P : string;
 
-type HasParams<Path extends string> = Path extends `${string}{${string}}${string}` ? true : false;
+type HasParams<Path extends string> = Path extends `${string}:${string}` ? true : false;
 
 type ParamsArg<Path extends string> = HasParams<Path> extends true ? { uuid: string } : undefined;
 

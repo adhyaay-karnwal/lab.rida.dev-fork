@@ -18,7 +18,7 @@ FROM base AS runtime
 COPY --from=prune /app/out/json/ .
 RUN bun install --ignore-scripts
 COPY --from=build /app/services/mcp/src ./services/mcp/src
-COPY --from=build /app/packages/sdk/src ./packages/sdk/src
+COPY --from=build /app/packages/sandbox-sdk/src ./packages/sandbox-sdk/src
 COPY --from=build /app/packages/sandbox-docker/src ./packages/sandbox-docker/src
 
 ENV NODE_ENV=production

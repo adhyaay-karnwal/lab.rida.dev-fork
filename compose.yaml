@@ -79,7 +79,7 @@ services:
   browser:
     build:
       context: .
-      dockerfile: packages/browser/Dockerfile
+      dockerfile: services/browser-daemon/Dockerfile
     image: lab-browser:latest
     container_name: lab-browser
     volumes:

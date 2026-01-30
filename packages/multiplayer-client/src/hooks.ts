@@ -19,9 +19,7 @@ type ChannelName<TChannels> = keyof TChannels & string;
 
 type PathOf<C> = C extends { path: infer P } ? P : string;
 
-type HasSessionParam<Path extends string> = Path extends `${string}{${string}}${string}`
-  ? true
-  : false;
+type HasSessionParam<Path extends string> = Path extends `${string}:${string}` ? true : false;
 
 type ChannelParams<TChannels, K extends ChannelName<TChannels>> =
   HasSessionParam<PathOf<TChannels[K]> & string> extends true ? { uuid: string } : undefined;

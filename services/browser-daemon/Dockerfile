@@ -1,3 +1,6 @@
+# TODO: Some hackery was required here to get this working across the
+# Docker boundaries, will revisit this. I am certain there are cleaner methods.
+
 FROM mcr.microsoft.com/playwright:v1.58.0-noble
 
 RUN npm install -g bun
@@ -5,18 +8,18 @@ RUN npm install -g bun
 WORKDIR /app
 
 COPY package.json ./
-COPY packages/browser/package.json ./packages/browser/
+COPY services/browser-daemon/package.json ./services/browser-daemon/
 COPY packages/database/package.json ./packages/database/
 
-RUN bun install --filter @lab/browser
+RUN bun install --filter @lab/browser-daemon
 
 RUN chmod +x /app/node_modules/.bun/agent-browser@*/node_modules/agent-browser/bin/agent-browser-linux-* 2>/dev/null || \
   chmod +x /app/node_modules/agent-browser/bin/agent-browser-linux-* 2>/dev/null || true
 
-COPY packages/browser/src ./packages/browser/src
+COPY services/browser-daemon/src ./services/browser-daemon/src
 COPY packages/database/src ./packages/database/src
 
-WORKDIR /app/packages/browser
+WORKDIR /app/services/browser-daemon
 
 ENV AGENT_BROWSER_SOCKET_DIR=/tmp/agent-browser-socket
 ENV AGENT_BROWSER_STREAM_PORT=9223

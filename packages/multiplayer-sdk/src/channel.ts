@@ -1,3 +1,9 @@
+declare const URLPattern: {
+  new (init: { pathname: string }): {
+    exec(input: { pathname: string }): { pathname: { groups: Record<string, string> } } | null;
+  };
+};
+
 /**
  * Replace :uuid in a template path with the actual value.
  * @example resolvePath("session/:uuid/meta", { uuid: "abc" }) => "session/abc/meta"

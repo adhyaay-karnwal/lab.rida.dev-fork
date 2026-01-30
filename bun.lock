@@ -43,19 +43,8 @@
         "typescript": "^5",
       },
     },
-    "packages/browser": {
-      "name": "@lab/browser",
-      "version": "0.1.0",
-      "dependencies": {
-        "agent-browser": "^0.8.4",
-      },
-      "devDependencies": {
-        "bun-types": "^1.2.11",
-        "typescript": "^5",
-      },
-    },
-    "packages/browser-orchestration": {
-      "name": "@lab/browser-orchestration",
+    "packages/browser-protocol": {
+      "name": "@lab/browser-protocol",
       "version": "0.1.0",
       "dependencies": {
         "zod": "^3.24.2",
@@ -153,7 +142,7 @@
       "name": "@lab/sandbox-docker",
       "version": "0.1.0",
       "dependencies": {
-        "@lab/sdk": "workspace:*",
+        "@lab/sandbox-sdk": "workspace:*",
         "dockerode": "^4.0.4",
       },
       "devDependencies": {
@@ -161,8 +150,8 @@
         "typescript": "^5",
       },
     },
-    "packages/sdk": {
-      "name": "@lab/sdk",
+    "packages/sandbox-sdk": {
+      "name": "@lab/sandbox-sdk",
       "version": "0.1.0",
       "devDependencies": {
         "typescript": "^5",
@@ -195,7 +184,7 @@
       "name": "@lab/api",
       "version": "0.1.0",
       "dependencies": {
-        "@lab/browser-orchestration": "workspace:*",
+        "@lab/browser-protocol": "workspace:*",
         "@lab/database": "workspace:*",
         "@lab/multiplayer-channels": "workspace:*",
         "@lab/multiplayer-sdk": "workspace:*",
@@ -211,6 +200,17 @@
         "bun-types": "^1.2.11",
         "oxfmt": "0.27.0",
         "oxlint": "1.42.0",
+        "typescript": "^5",
+      },
+    },
+    "services/browser-daemon": {
+      "name": "@lab/browser-daemon",
+      "version": "0.1.0",
+      "dependencies": {
+        "agent-browser": "^0.8.4",
+      },
+      "devDependencies": {
+        "bun-types": "^1.2.11",
         "typescript": "^5",
       },
     },
@@ -429,9 +429,9 @@
 
     "@lab/api": ["@lab/api@workspace:services/api"],
 
-    "@lab/browser": ["@lab/browser@workspace:packages/browser"],
+    "@lab/browser-daemon": ["@lab/browser-daemon@workspace:services/browser-daemon"],
 
-    "@lab/browser-orchestration": ["@lab/browser-orchestration@workspace:packages/browser-orchestration"],
+    "@lab/browser-protocol": ["@lab/browser-protocol@workspace:packages/browser-protocol"],
 
     "@lab/client": ["@lab/client@workspace:packages/client"],
 
@@ -449,7 +449,7 @@
 
     "@lab/sandbox-docker": ["@lab/sandbox-docker@workspace:packages/sandbox-docker"],
 
-    "@lab/sdk": ["@lab/sdk@workspace:packages/sdk"],
+    "@lab/sandbox-sdk": ["@lab/sandbox-sdk@workspace:packages/sandbox-sdk"],
 
     "@lab/ui": ["@lab/ui@workspace:packages/ui"],
 

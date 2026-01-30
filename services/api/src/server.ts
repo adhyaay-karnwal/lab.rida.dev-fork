@@ -1,5 +1,5 @@
 import { type WebSocketData } from "@lab/multiplayer-server";
-import { type BrowserSessionState } from "@lab/browser-orchestration";
+import { type BrowserSessionState } from "@lab/browser-protocol";
 import { createWebSocketHandlers, type Auth } from "./handlers/websocket";
 import { handleOpenCodeProxy } from "./handlers/opencode";
 import { bootstrapBrowserService, shutdownBrowserService } from "./browser/bootstrap";

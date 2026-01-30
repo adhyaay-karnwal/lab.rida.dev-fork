@@ -6,7 +6,7 @@ import {
   daemonStartFailed,
   daemonStopFailed,
   navigationFailed,
-} from "@lab/browser-orchestration";
+} from "@lab/browser-protocol";
 
 export const start = async (
   baseUrl: string,
