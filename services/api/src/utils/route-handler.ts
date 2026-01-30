@@ -1,10 +1,12 @@
 import type { BrowserService } from "../browser/browser-service";
+import type { PromptService } from "../prompts/types";
 
 export type HttpMethod = "GET" | "POST" | "PUT" | "PATCH" | "DELETE" | "HEAD" | "OPTIONS";
 
 export interface RouteContext {
   browserService: BrowserService;
   initializeSessionContainers: (sessionId: string, projectId: string) => Promise<void>;
+  promptService?: PromptService;
 }
 
 export type RouteHandler = (

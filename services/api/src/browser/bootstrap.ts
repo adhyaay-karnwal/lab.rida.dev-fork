@@ -3,6 +3,10 @@ import {
   type DaemonController,
   type StateStore,
 } from "@lab/browser-protocol";
+import { db } from "@lab/database/client";
+import { sessionContainers } from "@lab/database/schema/session-containers";
+import { containerPorts } from "@lab/database/schema/container-ports";
+import { eq, asc, and } from "drizzle-orm";
 import { createBrowserService, type BrowserService } from "./browser-service";
 import {
   getState,
@@ -47,6 +51,18 @@ const stateStore: StateStore = {
   setLastUrl,
 };
 
+const getFirstExposedPort = async (sessionId: string): Promise<number | null> => {
+  const result = await db
+    .select({ port: containerPorts.port })
+    .from(sessionContainers)
+    .innerJoin(containerPorts, eq(containerPorts.containerId, sessionContainers.containerId))
+    .where(and(eq(sessionContainers.sessionId, sessionId), eq(sessionContainers.status, "running")))
+    .orderBy(asc(containerPorts.port))
+    .limit(1);
+
+  return result[0]?.port ?? null;
+};
+
 export const bootstrapBrowserService = async (
   config: BrowserBootstrapConfig,
 ): Promise<BrowserService> => {
@@ -74,6 +90,7 @@ export const bootstrapBrowserService = async (
       daemonController,
       publishFrame: config.publishFrame,
       publishStateChange: config.publishStateChange,
+      getFirstExposedPort,
     },
   );
 

@@ -2,6 +2,10 @@ import { db } from "@lab/database/client";
 import { sessions } from "@lab/database/schema/sessions";
 import { projects } from "@lab/database/schema/projects";
 import { eq } from "drizzle-orm";
+import type { PromptService } from "../prompts/types";
+import { createPromptContext } from "../prompts/context";
+import { proxyManager, isProxyInitialized } from "../proxy";
+import type { RouteInfo } from "../proxy/types";
 
 const opencodeUrl = process.env.OPENCODE_URL;
 
@@ -11,7 +15,13 @@ function shouldInjectSystemPrompt(path: string, method: string): boolean {
   return method === "POST" && PROMPT_ENDPOINTS.some((endpoint) => path.includes(endpoint));
 }
 
-async function getSystemPrompt(labSessionId: string): Promise<string | null> {
+interface SessionData {
+  sessionId: string;
+  projectId: string;
+  projectSystemPrompt: string | null;
+}
+
+async function getSessionData(labSessionId: string): Promise<SessionData | null> {
   const [session] = await db.select().from(sessions).where(eq(sessions.id, labSessionId));
 
   if (!session) {
@@ -20,13 +30,30 @@ async function getSystemPrompt(labSessionId: string): Promise<string | null> {
 
   const [project] = await db.select().from(projects).where(eq(projects.id, session.projectId));
 
-  return project?.systemPrompt ?? null;
+  return {
+    sessionId: labSessionId,
+    projectId: session.projectId,
+    projectSystemPrompt: project?.systemPrompt ?? null,
+  };
+}
+
+function getServiceRoutes(sessionId: string): RouteInfo[] {
+  if (!isProxyInitialized()) {
+    return [];
+  }
+
+  try {
+    return proxyManager.getUrls(sessionId);
+  } catch {
+    return [];
+  }
 }
 
 async function buildProxyBody(
   request: Request,
   path: string,
   labSessionId: string | null,
+  promptService: PromptService,
 ): Promise<BodyInit | null> {
   const hasBody = ["POST", "PUT", "PATCH"].includes(request.method);
 
@@ -38,15 +65,30 @@ async function buildProxyBody(
     return request.body;
   }
 
-  const systemPrompt = await getSystemPrompt(labSessionId);
+  const sessionData = await getSessionData(labSessionId);
 
-  if (!systemPrompt) {
+  if (!sessionData) {
+    return request.body;
+  }
+
+  const routeInfos = getServiceRoutes(labSessionId);
+
+  const promptContext = createPromptContext({
+    sessionId: sessionData.sessionId,
+    projectId: sessionData.projectId,
+    routeInfos,
+    projectSystemPrompt: sessionData.projectSystemPrompt,
+  });
+
+  const { text: composedPrompt } = promptService.compose(promptContext);
+
+  if (!composedPrompt) {
     return request.body;
   }
 
   const originalBody = await request.json();
   const existingSystem = originalBody.system ?? "";
-  const combinedSystem = systemPrompt + (existingSystem ? "\n\n" + existingSystem : "");
+  const combinedSystem = composedPrompt + (existingSystem ? "\n\n" + existingSystem : "");
 
   return JSON.stringify({ ...originalBody, system: combinedSystem });
 }
@@ -121,28 +163,32 @@ function buildTargetUrl(path: string, url: URL, labSessionId: string | null): st
   return `${opencodeUrl}${path}${queryString ? `?${queryString}` : ""}`;
 }
 
-export async function handleOpenCodeProxy(request: Request, url: URL): Promise<Response> {
-  if (!opencodeUrl) {
-    return new Response("OPENCODE_URL not configured", { status: 500 });
-  }
+export type OpenCodeProxyHandler = (request: Request, url: URL) => Promise<Response>;
 
-  const path = url.pathname.replace(/^\/opencode/, "");
-  const labSessionId = request.headers.get("X-Lab-Session-Id");
-  const targetUrl = buildTargetUrl(path, url, labSessionId);
+export function createOpenCodeProxyHandler(promptService: PromptService): OpenCodeProxyHandler {
+  return async function handleOpenCodeProxy(request: Request, url: URL): Promise<Response> {
+    if (!opencodeUrl) {
+      return new Response("OPENCODE_URL not configured", { status: 500 });
+    }
 
-  const forwardHeaders = buildForwardHeaders(request);
-  const body = await buildProxyBody(request, path, labSessionId);
+    const path = url.pathname.replace(/^\/opencode/, "");
+    const labSessionId = request.headers.get("X-Lab-Session-Id");
+    const targetUrl = buildTargetUrl(path, url, labSessionId);
 
-  const proxyResponse = await fetch(targetUrl, {
-    method: request.method,
-    headers: forwardHeaders,
-    body,
-    ...(body ? { duplex: "half" } : {}),
-  });
+    const forwardHeaders = buildForwardHeaders(request);
+    const body = await buildProxyBody(request, path, labSessionId, promptService);
 
-  if (isSseResponse(path, proxyResponse)) {
-    return buildSseResponse(proxyResponse);
-  }
+    const proxyResponse = await fetch(targetUrl, {
+      method: request.method,
+      headers: forwardHeaders,
+      body,
+      ...(body ? { duplex: "half" } : {}),
+    });
 
-  return buildStandardResponse(proxyResponse);
+    if (isSseResponse(path, proxyResponse)) {
+      return buildSseResponse(proxyResponse);
+    }
+
+    return buildStandardResponse(proxyResponse);
+  };
 }

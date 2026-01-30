@@ -21,6 +21,7 @@ export interface BrowserServiceDependencies {
   daemonController: DaemonController;
   publishFrame: (sessionId: string, frame: string, timestamp: number) => void;
   publishStateChange: (sessionId: string, state: BrowserSessionState) => void;
+  getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
 }
 
 export interface BrowserService {
@@ -82,6 +83,7 @@ export const createBrowserService = async (
     maxRetries,
     reconcileIntervalMs,
     cleanupDelayMs,
+    getFirstExposedPort: deps.getFirstExposedPort,
   });
 
   orchestrator.onStateChange((sessionId: string, state: BrowserSessionState) => {

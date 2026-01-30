@@ -5,6 +5,7 @@ import { type DaemonController } from "./daemon-controller";
 
 export interface ReconcilerConfig {
   maxRetries: number;
+  getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
 }
 
 export interface Reconciler {
@@ -74,6 +75,12 @@ export const createReconciler = (
 
     if (session.lastUrl && session.lastUrl !== "about:blank") {
       await daemonController.navigate(sessionId, session.lastUrl);
+    } else if (!session.lastUrl && config.getFirstExposedPort) {
+      const port = await config.getFirstExposedPort(sessionId);
+      if (port) {
+        const url = `http://${sessionId}--${port}:${port}/`;
+        await daemonController.navigate(sessionId, url);
+      }
     }
   };
 

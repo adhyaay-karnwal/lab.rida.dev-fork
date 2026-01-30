@@ -9,6 +9,7 @@ export interface OrchestratorConfig {
   maxRetries: number;
   reconcileIntervalMs: number;
   cleanupDelayMs: number;
+  getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
 }
 
 export type StateChangeHandler = (sessionId: string, state: BrowserSessionState) => void;
@@ -58,6 +59,7 @@ export const createOrchestrator = (
 
   const reconciler = createReconciler(notifyingStateStore, daemonController, {
     maxRetries: config.maxRetries,
+    getFirstExposedPort: config.getFirstExposedPort,
   });
 
   const reconcilerLoop: ReconcilerLoop = createReconcilerLoop(

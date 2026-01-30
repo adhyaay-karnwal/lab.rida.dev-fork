@@ -1,13 +1,15 @@
 import { type WebSocketData } from "@lab/multiplayer-server";
 import { type BrowserSessionState } from "@lab/browser-protocol";
 import { createWebSocketHandlers, type Auth } from "./handlers/websocket";
-import { handleOpenCodeProxy } from "./handlers/opencode";
+import { createOpenCodeProxyHandler, type OpenCodeProxyHandler } from "./handlers/opencode";
 import { bootstrapBrowserService, shutdownBrowserService } from "./browser/bootstrap";
 import { type BrowserService } from "./browser/browser-service";
 import { createSessionInitializer } from "./session-initializer";
 import { isHttpMethod, isRouteModule, type RouteContext } from "./utils/route-handler";
 import { publisher } from "./publisher";
 import { join } from "node:path";
+import { createDefaultPromptService } from "./prompts/builder";
+import type { PromptService } from "./prompts/types";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -74,15 +76,20 @@ const browserConfig = {
 
 let browserService: BrowserService;
 let routeContext: RouteContext;
+let promptService: PromptService;
+let handleOpenCodeProxy: OpenCodeProxyHandler;
 
 const bootstrap = async () => {
   browserService = await bootstrapBrowserService(browserConfig);
+  promptService = createDefaultPromptService();
+  handleOpenCodeProxy = createOpenCodeProxyHandler(promptService);
 
   const initializeSessionContainers = createSessionInitializer(browserService);
 
   routeContext = {
     browserService,
     initializeSessionContainers,
+    promptService,
   };
 
   const { websocketHandler, upgrade } = createWebSocketHandlers(browserService);
