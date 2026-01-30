@@ -93,14 +93,27 @@ const DELETE: RouteHandler = async (_request, params, context) => {
   if (isProxyInitialized()) {
     try {
       await proxyManager.unregisterCluster(sessionId);
-    } catch {}
+    } catch (error) {
+      console.warn(`Failed to unregister proxy cluster for session ${sessionId}:`, error);
+    }
   }
 
   const caddyContainerName = process.env.CADDY_CONTAINER_NAME;
   if (caddyContainerName) {
     try {
       await docker.disconnectFromNetwork(caddyContainerName, networkName);
-    } catch {}
+    } catch (error) {
+      console.warn(`Failed to disconnect caddy from network ${networkName}:`, error);
+    }
+  }
+
+  const browserContainerName = process.env.BROWSER_CONTAINER_NAME;
+  if (browserContainerName) {
+    try {
+      await docker.disconnectFromNetwork(browserContainerName, networkName);
+    } catch (error) {
+      console.warn(`Failed to disconnect browser from network ${networkName}:`, error);
+    }
   }
 
   await docker.removeNetwork(networkName);

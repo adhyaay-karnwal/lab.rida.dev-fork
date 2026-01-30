@@ -16,6 +16,7 @@ const WORKSPACES_HOST_PATH = "/var/lib/docker/volumes/lab_session_workspaces/_da
 
 const BROWSER_SOCKET_DIR = "/tmp/agent-browser-socket";
 const BROWSER_SOCKET_VOLUME = process.env.BROWSER_SOCKET_VOLUME ?? "lab_browser_sockets";
+const BROWSER_CONTAINER_NAME = process.env.BROWSER_CONTAINER_NAME;
 
 export const createSessionInitializer = (browserService: BrowserService) => {
   return async function initializeSessionContainers(
@@ -37,6 +38,14 @@ export const createSessionInitializer = (browserService: BrowserService) => {
 
     try {
       await docker.createNetwork(networkName, { labels: { "lab.session": sessionId } });
+
+      if (BROWSER_CONTAINER_NAME) {
+        try {
+          await docker.connectToNetwork(BROWSER_CONTAINER_NAME, networkName);
+        } catch (error) {
+          console.warn(`Failed to connect browser container to network ${networkName}:`, error);
+        }
+      }
 
       for (const containerDefinition of containerDefinitions) {
         const ports = await db
@@ -122,8 +131,15 @@ export const createSessionInitializer = (browserService: BrowserService) => {
         await docker.startContainer(dockerId);
 
         const portMap: Record<number, number> = {};
+        const networkAliases: string[] = [];
         for (const { port } of ports) {
           portMap[port] = port;
+          networkAliases.push(`${sessionId}--${port}`);
+        }
+
+        if (networkAliases.length > 0) {
+          await docker.disconnectFromNetwork(dockerId, networkName);
+          await docker.connectToNetwork(dockerId, networkName, { aliases: networkAliases });
         }
 
         if (Object.keys(portMap).length > 0) {
@@ -174,6 +190,14 @@ export const createSessionInitializer = (browserService: BrowserService) => {
             .catch((error) => console.error(`Failed to cleanup container ${dockerId}:`, error)),
         ),
       );
+
+      if (BROWSER_CONTAINER_NAME) {
+        await docker
+          .disconnectFromNetwork(BROWSER_CONTAINER_NAME, networkName)
+          .catch((error) =>
+            console.error(`Failed to disconnect browser from network ${networkName}:`, error),
+          );
+      }
 
       await docker
         .removeNetwork(networkName)

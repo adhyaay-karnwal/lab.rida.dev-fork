@@ -332,8 +332,15 @@ export class DockerClient implements SandboxProvider {
     }
   }
 
-  async connectToNetwork(containerId: string, networkName: string): Promise<void> {
-    await this.docker.getNetwork(networkName).connect({ Container: containerId });
+  async connectToNetwork(
+    containerId: string,
+    networkName: string,
+    options?: { aliases?: string[] },
+  ): Promise<void> {
+    await this.docker.getNetwork(networkName).connect({
+      Container: containerId,
+      EndpointConfig: options?.aliases ? { Aliases: options.aliases } : undefined,
+    });
   }
 
   async disconnectFromNetwork(containerId: string, networkName: string): Promise<void> {

@@ -70,6 +70,7 @@ services:
       BROWSER_SOCKET_VOLUME: "lab_browser_sockets"
       BROWSER_API_URL: "http://browser:80"
       BROWSER_WS_HOST: "browser"
+      BROWSER_CONTAINER_NAME: "lab-browser"
     depends_on:
       - postgres
       - opencode
