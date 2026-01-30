@@ -13,7 +13,7 @@ import { containerPorts } from "@lab/database/schema/container-ports";
 import { eq } from "drizzle-orm";
 import { publisher } from "../publisher";
 import { opencode } from "../opencode";
-import { browserSessionService } from "../browser/browser-session-service";
+import { getBrowserSnapshot, subscribeBrowser, unsubscribeBrowser } from "../browser/handlers";
 
 const PROXY_BASE_DOMAIN = process.env.PROXY_BASE_DOMAIN;
 
@@ -148,15 +148,9 @@ const handlers: SchemaHandlers<Schema, Auth> = {
   sessionMessages: {
     getSnapshot: async () => [],
   },
-  sessionBrowserStream: {
+  sessionBrowserState: {
     getSnapshot: async ({ params }) => {
-      const snapshot = await browserSessionService.getSnapshot(params.uuid);
-      return {
-        desiredState: snapshot.desiredState,
-        actualState: snapshot.actualState,
-        streamPort: snapshot.streamPort ?? undefined,
-        errorMessage: snapshot.errorMessage ?? undefined,
-      };
+      return getBrowserSnapshot(params.uuid);
     },
     onSubscribe: ({ params, ws }) => {
       const sessionId = params.uuid;
@@ -166,34 +160,30 @@ const handlers: SchemaHandlers<Schema, Auth> = {
       }
       const subscribers = sessionSubscribers.get(sessionId)!;
 
-      // Skip if this ws is already subscribed
       if (subscribers.has(ws)) {
-        console.log(
-          `[BrowserStream] Already subscribed: sessionId=${sessionId}, count=${subscribers.size}`,
-        );
         return;
       }
 
       subscribers.add(ws);
-      console.log(`[BrowserStream] Subscribe: sessionId=${sessionId}, count=${subscribers.size}`);
-
-      browserSessionService.subscribe(sessionId, { subscriberCount: subscribers.size });
+      subscribeBrowser(sessionId);
     },
     onUnsubscribe: ({ params, ws }) => {
       const sessionId = params.uuid;
       const subscribers = sessionSubscribers.get(sessionId);
 
       if (!subscribers || !subscribers.has(ws)) {
-        console.log(`[BrowserStream] Unsubscribe (not tracked): sessionId=${sessionId}`);
         return;
       }
 
       subscribers.delete(ws);
-      const count = subscribers.size;
-      console.log(`[BrowserStream] Unsubscribe: sessionId=${sessionId}, count=${count}`);
-
-      browserSessionService.unsubscribe(sessionId, { subscriberCount: count });
+      unsubscribeBrowser(sessionId);
     },
+  },
+  sessionBrowserFrames: {
+    getSnapshot: async () => ({ lastFrame: null, timestamp: null }),
+  },
+  sessionBrowserInput: {
+    getSnapshot: async () => ({}),
   },
 };
 

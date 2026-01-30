@@ -26,7 +26,7 @@ export default function SessionPage() {
   const links = useChannel("sessionLinks", { uuid: sessionId });
   const logSources = useChannel("sessionLogs", { uuid: sessionId });
   const sessionContainers = useChannel("sessionContainers", { uuid: sessionId });
-  const browserStream = useChannel("sessionBrowserStream", { uuid: sessionId });
+  const browserStream = useChannel("sessionBrowserState", { uuid: sessionId });
 
   const [localReviewFiles, setLocalReviewFiles] = useState<ReviewableFile[]>([]);
   const reviewFiles = changedFiles.length > 0 ? changedFiles : localReviewFiles;

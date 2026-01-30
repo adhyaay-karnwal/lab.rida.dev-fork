@@ -60,12 +60,20 @@
       "name": "@lab/browser",
       "version": "0.1.0",
       "dependencies": {
-        "@lab/database": "workspace:*",
         "agent-browser": "^0.8.4",
-        "drizzle-orm": "^0.38.0",
       },
       "devDependencies": {
         "bun-types": "^1.2.11",
+        "typescript": "^5",
+      },
+    },
+    "packages/browser-orchestration": {
+      "name": "@lab/browser-orchestration",
+      "version": "0.1.0",
+      "dependencies": {
+        "zod": "^3.24.2",
+      },
+      "devDependencies": {
         "typescript": "^5",
       },
     },
@@ -199,6 +207,7 @@
       "version": "0.1.0",
       "dependencies": {
         "@lab/agent": "workspace:*",
+        "@lab/browser-orchestration": "workspace:*",
         "@lab/database": "workspace:*",
         "@lab/multiplayer-channels": "workspace:*",
         "@lab/multiplayer-server": "workspace:*",
@@ -435,6 +444,8 @@
     "@lab/api": ["@lab/api@workspace:services/api"],
 
     "@lab/browser": ["@lab/browser@workspace:packages/browser"],
+
+    "@lab/browser-orchestration": ["@lab/browser-orchestration@workspace:packages/browser-orchestration"],
 
     "@lab/client": ["@lab/client@workspace:packages/client"],
 

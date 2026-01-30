@@ -10,6 +10,7 @@
   },
   "dependencies": {
     "@lab/agent": "workspace:*",
+    "@lab/browser-orchestration": "workspace:*",
     "@lab/database": "workspace:*",
     "@lab/multiplayer-channels": "workspace:*",
     "@lab/multiplayer-server": "workspace:*",

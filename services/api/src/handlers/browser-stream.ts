@@ -1,4 +1,9 @@
-import { browserSessionService } from "../browser/browser-session-service";
+import {
+  getBrowserSnapshot,
+  getCachedFrame,
+  setCachedFrame,
+  launchBrowser,
+} from "../browser/handlers";
 import type { ServerWebSocket } from "bun";
 
 const BROWSER_WS_HOST = process.env.BROWSER_WS_HOST ?? "browser";
@@ -35,18 +40,18 @@ async function connectToBrowser(
   ws: ServerWebSocket<BrowserStreamData>,
   sessionId: string,
 ): Promise<void> {
-  const snapshot = await browserSessionService.getSnapshot(sessionId);
+  const snapshot = await getBrowserSnapshot(sessionId);
 
   if (!snapshot.streamPort) {
     return;
   }
 
-  const cachedFrame = browserSessionService.getCachedFrame(sessionId);
+  const cachedFrame = await getCachedFrame(sessionId);
   if (cachedFrame) {
     ws.send(cachedFrame);
   }
 
-  await browserSessionService.launchBrowser(sessionId);
+  await launchBrowser(sessionId);
 
   await new Promise((resolve) => setTimeout(resolve, 500));
 
@@ -56,7 +61,7 @@ async function connectToBrowser(
     const data = event.data.toString();
 
     if (data.includes('"type":"frame"')) {
-      browserSessionService.setCachedFrame(sessionId, data);
+      setCachedFrame(sessionId, data).catch(console.error);
     }
 
     ws.send(event.data);
@@ -70,8 +75,6 @@ async function connectToBrowser(
 export const browserStreamHandler = {
   async open(ws: ServerWebSocket<BrowserStreamData>) {
     const { sessionId } = ws.data;
-    // Subscription lifecycle is managed by the multiplayer channel (sessionBrowserStream in websocket.ts)
-    // This handler only manages the WebSocket connection to the browser daemon
     connectToBrowser(ws, sessionId);
   },
 

@@ -169,16 +169,16 @@ export const schema = defineSchema({
       }),
     }),
 
-    sessionBrowserStream: defineChannel({
-      path: "session/{uuid}/browser-stream",
+    sessionBrowserState: defineChannel({
+      path: "session/{uuid}/browser-state",
       snapshot: z.object({
         desiredState: z.enum(["running", "stopped"]),
         actualState: z.enum([
           "pending",
+          "stopped",
           "starting",
           "running",
           "stopping",
-          "stopped",
           "error",
         ]),
         streamPort: z.number().optional(),
@@ -188,11 +188,62 @@ export const schema = defineSchema({
       delta: z.object({
         desiredState: z.enum(["running", "stopped"]).optional(),
         actualState: z
-          .enum(["pending", "starting", "running", "stopping", "stopped", "error"])
+          .enum(["pending", "stopped", "starting", "running", "stopping", "error"])
           .optional(),
         streamPort: z.number().optional(),
         errorMessage: z.string().optional(),
       }),
+    }),
+
+    sessionBrowserFrames: defineChannel({
+      path: "session/{uuid}/browser-frames",
+      snapshot: z.object({
+        lastFrame: z.string().nullable(),
+        timestamp: z.number().nullable(),
+      }),
+      default: { lastFrame: null, timestamp: null },
+      event: z.object({
+        type: z.literal("frame"),
+        data: z.string(),
+        timestamp: z.number(),
+      }),
+    }),
+
+    sessionBrowserInput: defineChannel({
+      path: "session/{uuid}/browser-input",
+      snapshot: z.object({}),
+      default: {},
+      event: z.discriminatedUnion("type", [
+        z.object({
+          type: z.literal("mouse_click"),
+          x: z.number(),
+          y: z.number(),
+          button: z.enum(["left", "right", "middle"]).optional(),
+        }),
+        z.object({
+          type: z.literal("mouse_move"),
+          x: z.number(),
+          y: z.number(),
+        }),
+        z.object({
+          type: z.literal("key_press"),
+          key: z.string(),
+          modifiers: z.array(z.enum(["ctrl", "alt", "shift", "meta"])).optional(),
+        }),
+        z.object({
+          type: z.literal("key_release"),
+          key: z.string(),
+        }),
+        z.object({
+          type: z.literal("scroll"),
+          deltaX: z.number(),
+          deltaY: z.number(),
+        }),
+        z.object({
+          type: z.literal("type_text"),
+          text: z.string(),
+        }),
+      ]),
     }),
   },
 

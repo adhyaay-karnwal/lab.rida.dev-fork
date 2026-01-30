@@ -8,7 +8,7 @@ import { eq, and } from "drizzle-orm";
 import { DockerClient } from "@lab/sandbox-docker";
 import { proxyManager, isProxyInitialized, ensureProxyInitialized } from "./proxy";
 import { publisher } from "./publisher";
-import { browserSessionService } from "./browser/browser-session-service";
+import { forceStopBrowser } from "./browser/handlers";
 
 const docker = new DockerClient();
 const WORKSPACES_VOLUME = "lab_session_workspaces";
@@ -178,7 +178,7 @@ export async function initializeSessionContainers(
       .removeNetwork(networkName)
       .catch((error) => console.error(`Failed to cleanup network ${networkName}:`, error));
 
-    await browserSessionService.forceStop(sessionId);
+    await forceStopBrowser(sessionId);
 
     await db.delete(sessions).where(eq(sessions.id, sessionId));
 

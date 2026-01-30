@@ -25,6 +25,7 @@ COPY --from=build /app/packages/sandbox-docker/src ./packages/sandbox-docker/src
 COPY --from=build /app/packages/multiplayer/server/src ./packages/multiplayer/server/src
 COPY --from=build /app/packages/multiplayer/shared/src ./packages/multiplayer/shared/src
 COPY --from=build /app/packages/multiplayer-channels/src ./packages/multiplayer-channels/src
+COPY --from=build /app/packages/browser-orchestration/src ./packages/browser-orchestration/src
 
 ENV NODE_ENV=production
 EXPOSE 3001

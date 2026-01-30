@@ -6,7 +6,7 @@ import {
   browserStreamHandler,
   type BrowserStreamData,
 } from "./handlers/browser-stream";
-import { browserSessionService } from "./browser/browser-session-service";
+import { startReconciler, stopReconciler } from "./browser/handlers";
 import { isHttpMethod, isRouteModule } from "./utils/route-handler";
 import { join } from "node:path";
 
@@ -120,13 +120,13 @@ export const server = Bun.serve<CombinedWebSocketData>({
   },
 });
 
-// Start browser session reconciler
-browserSessionService.startReconciler();
+startReconciler().catch((error) => {
+  console.error("Failed to start browser reconciler:", error);
+  process.exit(1);
+});
 
-// Graceful shutdown
-function gracefulShutdown() {
-  console.log("Shutting down...");
-  browserSessionService.stopReconciler();
+async function gracefulShutdown() {
+  await stopReconciler();
   process.exit(0);
 }
 
