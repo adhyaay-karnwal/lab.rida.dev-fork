@@ -1,6 +1,12 @@
 import type { DockerClient } from "@lab/sandbox-docker";
 import { CaddyClient } from "./caddy";
-import type { CaddyConfig, ClusterContainer, ProxyManager, RouteInfo } from "../../types/proxy";
+import type {
+  CaddyConfig,
+  ClusterContainer,
+  ProxyManager,
+  ReverseProxyHandler,
+  RouteInfo,
+} from "../../types/proxy";
 
 function isAlreadyConnectedError(err: unknown): boolean {
   return (
@@ -15,6 +21,25 @@ function isAlreadyConnectedError(err: unknown): boolean {
     typeof err.json.message === "string" &&
     err.json.message.includes("already exists in network")
   );
+}
+
+function createReverseProxyHandler(upstream: string): ReverseProxyHandler {
+  return {
+    handler: "reverse_proxy",
+    upstreams: [{ dial: upstream }],
+    transport: {
+      protocol: "http",
+      dial_timeout: "5s",
+      response_header_timeout: "10s",
+    },
+    health_checks: {
+      passive: {
+        fail_duration: "5s",
+        max_fails: 1,
+        unhealthy_status: [502, 503, 504],
+      },
+    },
+  };
 }
 
 interface CaddyProxyManagerOptions {
@@ -92,14 +117,20 @@ export class CaddyProxyManager implements ProxyManager {
         const subdomain = `${clusterId}--${containerPort}`;
         const routeId = `${clusterId}-${containerPort}`;
 
+        const upstream = `${container.hostname}:${containerPort}`;
+
         await this.caddy.addRoute({
           "@id": routeId,
-          match: [{ host: [`${subdomain}.${this.matchDomain}`] }],
+          match: [{ host: [`${subdomain}.${this.matchDomain}`, `${subdomain}.caddy`] }],
+          handle: [createReverseProxyHandler(upstream)],
+        });
+
+        await this.caddy.addRoute({
+          "@id": `${routeId}-path`,
+          match: [{ path: [`/${subdomain}`, `/${subdomain}/*`] }],
           handle: [
-            {
-              handler: "reverse_proxy",
-              upstreams: [{ dial: `${container.hostname}:${containerPort}` }],
-            },
+            { handler: "rewrite", strip_path_prefix: `/${subdomain}` },
+            createReverseProxyHandler(upstream),
           ],
         });
 
@@ -123,6 +154,7 @@ export class CaddyProxyManager implements ProxyManager {
     for (const route of registration.routes) {
       const routeId = `${clusterId}-${route.containerPort}`;
       await this.caddy.deleteRoute(routeId);
+      await this.caddy.deleteRoute(`${routeId}-path`);
     }
 
     if (!this.caddyContainerId) {

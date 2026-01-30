@@ -24,6 +24,8 @@ export interface BrowserServiceDependencies {
   publishFrame: (sessionId: string, frame: string, timestamp: number) => void;
   publishStateChange: (sessionId: string, state: BrowserSessionState) => void;
   getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
+  getInitialNavigationUrl?: (sessionId: string, port: number) => string | Promise<string>;
+  waitForService?: (sessionId: string, port: number) => Promise<void>;
 }
 
 export interface BrowserService {
@@ -85,10 +87,10 @@ export const createBrowserService = async (
   };
 
   const orchestrator = createOrchestrator(stateStore, daemonController, {
+    ...deps,
     maxRetries,
     reconcileIntervalMs,
     cleanupDelayMs,
-    getFirstExposedPort: deps.getFirstExposedPort,
   });
 
   orchestrator.onStateChange((sessionId: string, state: BrowserSessionState) => {
@@ -127,15 +129,7 @@ export const createBrowserService = async (
     },
 
     async subscribeBrowser(sessionId: string) {
-      const snapshot = await orchestrator.subscribe(sessionId);
-
-      if (snapshot.currentState === "running" && snapshot.streamPort) {
-        connectFrameReceiver(sessionId, snapshot.streamPort, orchestrator).catch((error) =>
-          console.error("[FrameReceiver] Failed to connect:", error),
-        );
-      }
-
-      return snapshot;
+      return orchestrator.subscribe(sessionId);
     },
 
     unsubscribeBrowser(sessionId: string) {

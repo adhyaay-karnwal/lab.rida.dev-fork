@@ -3,7 +3,7 @@ import {
   type DaemonController,
   type StateStore,
 } from "@lab/browser-protocol";
-import { getFirstExposedPort } from "../repositories/container.repository";
+import { getFirstExposedPort, getFirstExposedService } from "../repositories/container.repository";
 import { createBrowserService, type BrowserService } from "./browser-service";
 import {
   getState,
@@ -48,6 +48,41 @@ const stateStore: StateStore = {
   setLastUrl,
 };
 
+async function getInitialNavigationUrl(sessionId: string, _port: number): Promise<string> {
+  const service = await getFirstExposedService(sessionId);
+  if (!service) {
+    throw new Error(`No exposed service found for session ${sessionId}`);
+  }
+  return `http://${service.hostname}:${service.port}/`;
+}
+
+function getCaddyPollUrl(sessionId: string, port: number): string {
+  return `http://caddy/${sessionId}--${port}/`;
+}
+
+async function waitForService(
+  sessionId: string,
+  port: number,
+  timeoutMs = 30000,
+  intervalMs = 250,
+): Promise<void> {
+  const url = getCaddyPollUrl(sessionId, port);
+  const start = Date.now();
+
+  while (Date.now() - start < timeoutMs) {
+    const response = await fetch(url).catch(() => null);
+    if (response?.ok) {
+      const contentLength = response.headers.get("content-length");
+      if (contentLength && parseInt(contentLength, 10) > 0) {
+        return;
+      }
+    }
+    await Bun.sleep(intervalMs);
+  }
+
+  throw new Error(`Service not available: ${url}`);
+}
+
 export const bootstrapBrowserService = async (
   config: BrowserBootstrapConfig,
 ): Promise<BrowserService> => {
@@ -77,6 +112,8 @@ export const bootstrapBrowserService = async (
       publishFrame: config.publishFrame,
       publishStateChange: config.publishStateChange,
       getFirstExposedPort,
+      getInitialNavigationUrl,
+      waitForService,
     },
   );
 

@@ -44,6 +44,8 @@ export const createOrchestrator = (
   const reconciler = createEventDrivenReconciler(notifyingStateStore, daemonController, {
     maxRetries: config.maxRetries,
     getFirstExposedPort: config.getFirstExposedPort,
+    getInitialNavigationUrl: config.getInitialNavigationUrl,
+    waitForService: config.waitForService,
   });
 
   const getSnapshot = async (sessionId: string): Promise<SessionSnapshot> => {

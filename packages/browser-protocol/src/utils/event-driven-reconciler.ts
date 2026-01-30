@@ -113,8 +113,11 @@ export const createEventDrivenReconciler = (
           await daemonController.navigate(sessionId, session.lastUrl);
         } else if (!session.lastUrl && config.getFirstExposedPort) {
           const exposedPort = await config.getFirstExposedPort(sessionId);
-          if (exposedPort) {
-            const url = `http://${sessionId}--${exposedPort}:${exposedPort}/`;
+          if (exposedPort && config.getInitialNavigationUrl) {
+            if (config.waitForService) {
+              await config.waitForService(sessionId, exposedPort);
+            }
+            const url = await config.getInitialNavigationUrl(sessionId, exposedPort);
             await daemonController.navigate(sessionId, url);
           }
         }

@@ -1,7 +1,6 @@
 import { z } from "zod";
 import type { RouteHandler } from "../../../utils/route-handler";
-import { navigate } from "../../../utils/agent-browser";
-import { notFoundResponse, badRequestResponse, errorResponse, serviceUnavailableResponse } from "../../../shared/http";
+import { notFoundResponse, badRequestResponse, serviceUnavailableResponse } from "../../../shared/http";
 
 const NavigateBody = z.object({
   url: z.string().url(),
@@ -34,14 +33,7 @@ export const POST: RouteHandler = async (request, params, { daemonManager }) => 
   const { url } = parsed.data;
 
   console.log(`[Navigate] ${sessionId} -> ${url}`);
-
-  try {
-    await navigate(sessionId, url);
-    console.log(`[Navigate] ${sessionId} complete`);
-    return Response.json({ sessionId, navigated: true });
-  } catch (err) {
-    const message = err instanceof Error ? err.message : "Unknown error";
-    console.error(`[Navigate] ${sessionId} failed: ${message}`);
-    return errorResponse(message);
-  }
+  daemonManager.navigate(sessionId, url);
+  console.log(`[Navigate] ${sessionId} complete`);
+  return Response.json({ sessionId, navigated: true });
 };

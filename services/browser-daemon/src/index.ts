@@ -13,8 +13,6 @@ const daemonManager: DaemonManager = createDaemonManager({
   profileDir: config.profileDir,
 });
 
-await daemonManager.start("default");
-
 const context: RouteContext = { daemonManager };
 
 Bun.serve({

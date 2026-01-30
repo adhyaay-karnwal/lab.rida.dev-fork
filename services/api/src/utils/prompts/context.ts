@@ -1,17 +1,21 @@
-import type { RouteInfo } from "../../types/proxy";
 import type { PromptContext, ServiceRoute } from "../../types/prompt";
+
+export interface ContainerInfo {
+  hostname: string;
+  port: number;
+}
 
 export interface CreatePromptContextParams {
   sessionId: string;
   projectId: string;
-  routeInfos: RouteInfo[];
+  containers: ContainerInfo[];
   projectSystemPrompt: string | null;
 }
 
 export function createPromptContext(params: CreatePromptContextParams): PromptContext {
-  const serviceRoutes: ServiceRoute[] = params.routeInfos.map((route) => ({
-    port: route.containerPort,
-    url: route.url,
+  const serviceRoutes: ServiceRoute[] = params.containers.map((container) => ({
+    port: container.port,
+    url: `http://${container.hostname}:${container.port}/`,
   }));
 
   return {

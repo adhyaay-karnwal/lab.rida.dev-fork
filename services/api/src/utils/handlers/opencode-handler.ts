@@ -1,12 +1,11 @@
 import { config } from "../../config/environment";
 import { CORS_HEADERS, buildSseResponse } from "../../shared/http";
 import { formatWorkspacePath } from "../../types/session";
-import { createPromptContext } from "../prompts/context";
+import { createPromptContext, type ContainerInfo } from "../prompts/context";
 import type { PromptService } from "../../types/prompt";
 import { findSessionById } from "../repositories/session.repository";
 import { getProjectSystemPrompt } from "../repositories/project.repository";
-import { proxyManager, isProxyInitialized } from "../proxy";
-import type { RouteInfo } from "../../types/proxy";
+import { getSessionContainersWithPorts } from "../repositories/container.repository";
 
 const PROMPT_ENDPOINTS = ["/session/", "/prompt", "/message"];
 
@@ -27,14 +26,8 @@ async function getSessionData(labSessionId: string) {
   };
 }
 
-function getServiceRoutes(sessionId: string): RouteInfo[] {
-  if (!isProxyInitialized()) return [];
-
-  try {
-    return proxyManager.getUrls(sessionId);
-  } catch {
-    return [];
-  }
+async function getContainerInfos(sessionId: string): Promise<ContainerInfo[]> {
+  return getSessionContainersWithPorts(sessionId);
 }
 
 async function buildProxyBody(
@@ -53,11 +46,11 @@ async function buildProxyBody(
   const sessionData = await getSessionData(labSessionId);
   if (!sessionData) return request.body;
 
-  const routeInfos = getServiceRoutes(labSessionId);
+  const containers = await getContainerInfos(labSessionId);
   const promptContext = createPromptContext({
     sessionId: sessionData.sessionId,
     projectId: sessionData.projectId,
-    routeInfos,
+    containers,
     projectSystemPrompt: sessionData.projectSystemPrompt,
   });
 

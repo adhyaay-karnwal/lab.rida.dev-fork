@@ -12,5 +12,15 @@ RUN sed -i 's/export async function startDaemon/export async function startDaemo
 
 RUN AGENT_BIN=$(which agent-browser) && \
   mv "$AGENT_BIN" "${AGENT_BIN}.real" && \
-  printf '#!/bin/sh\nif echo "$PWD" | grep -q "^/workspaces/"; then\n  export AGENT_BROWSER_SESSION=$(echo "$PWD" | cut -d"/" -f3)\nfi\nexec agent-browser.real "$@"\n' > "$AGENT_BIN" && \
+  printf '#!/bin/sh\n\
+if echo "$PWD" | grep -q "^/workspaces/"; then\n\
+  SESSION=$(echo "$PWD" | cut -d"/" -f3)\n\
+  export AGENT_BROWSER_SESSION="$SESSION"\n\
+  CDP_FILE="${AGENT_BROWSER_SOCKET_DIR}/${SESSION}.cdp"\n\
+  if [ -f "$CDP_FILE" ]; then\n\
+    CDP_PORT=$(cat "$CDP_FILE")\n\
+    export AGENT_BROWSER_CDP_URL="ws://${BROWSER_DAEMON_HOST:-browser}:${CDP_PORT}"\n\
+  fi\n\
+fi\n\
+exec agent-browser.real "$@"\n' > "$AGENT_BIN" && \
   chmod +x "$AGENT_BIN"

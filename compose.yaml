@@ -34,6 +34,7 @@ services:
       context: .
       dockerfile: services/opencode/Dockerfile
     container_name: lab-opencode
+    pid: "service:browser"
     command: ["serve", "--hostname", "0.0.0.0", "--port", "3000"]
     ports:
       - "3002:3000"
@@ -43,10 +44,14 @@ services:
       - browser_sockets:/tmp/agent-browser-socket
     environment:
       AGENT_BROWSER_SOCKET_DIR: /tmp/agent-browser-socket
+      BROWSER_DAEMON_HOST: browser
     depends_on:
-      - postgres
-      - mcp
-      - browser
+      postgres:
+        condition: service_started
+      mcp:
+        condition: service_started
+      browser:
+        condition: service_healthy
 
   mcp:
     build:
@@ -90,6 +95,13 @@ services:
       dockerfile: services/browser-daemon/Dockerfile
     image: lab-browser:latest
     container_name: lab-browser
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:80/health"]
+      interval: 5s
+      timeout: 2s
+      retries: 6
+      start_period: 10s
+      start_interval: 1s
     volumes:
       - browser_sockets:/tmp/agent-browser-socket
       - browser_profiles:/data/browser-profiles

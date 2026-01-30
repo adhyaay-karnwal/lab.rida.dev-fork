@@ -1,6 +1,7 @@
 export interface DaemonSession {
   sessionId: string;
   port: number;
+  cdpPort: number;
   ready: boolean;
 }
 
@@ -8,6 +9,7 @@ export interface StartResult {
   type: "started" | "already_running";
   sessionId: string;
   port: number;
+  cdpPort: number;
   ready: boolean;
 }
 
@@ -29,5 +31,7 @@ export interface DaemonManager {
   getAllSessions(): DaemonSession[];
   isRunning(sessionId: string): boolean;
   isReady(sessionId: string): boolean;
+  navigate(sessionId: string, url: string): boolean;
+  getCurrentUrl(sessionId: string): string | null;
   onEvent(handler: import("./events").DaemonEventHandler): () => void;
 }

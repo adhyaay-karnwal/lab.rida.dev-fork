@@ -1,7 +1,7 @@
 export type { HttpMethod, RouteHandler, RouteContext, RouteModule } from "../types/route";
 import type { HttpMethod, RouteModule } from "../types/route";
 
-const HTTP_METHODS: Set<string> = new Set(["GET", "POST", "DELETE"]);
+const HTTP_METHODS: Set<string> = new Set(["GET", "POST", "DELETE", "HEAD"]);
 
 export function isHttpMethod(method: string): method is HttpMethod {
   return HTTP_METHODS.has(method);

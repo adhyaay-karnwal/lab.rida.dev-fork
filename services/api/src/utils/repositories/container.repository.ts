@@ -101,11 +101,30 @@ export async function getFirstExposedPort(sessionId: string): Promise<number | n
     .select({ port: containerPorts.port })
     .from(sessionContainers)
     .innerJoin(containerPorts, eq(containerPorts.containerId, sessionContainers.containerId))
-    .where(and(eq(sessionContainers.sessionId, sessionId), eq(sessionContainers.status, "running")))
-    .orderBy(containerPorts.port)
+    .where(eq(sessionContainers.sessionId, sessionId))
+    .orderBy(asc(containerPorts.port))
     .limit(1);
 
   return result[0]?.port ?? null;
+}
+
+export async function getFirstExposedService(
+  sessionId: string,
+): Promise<{ hostname: string; port: number } | null> {
+  const result = await db
+    .select({
+      port: containerPorts.port,
+    })
+    .from(sessionContainers)
+    .innerJoin(containerPorts, eq(containerPorts.containerId, sessionContainers.containerId))
+    .where(eq(sessionContainers.sessionId, sessionId))
+    .orderBy(asc(containerPorts.port))
+    .limit(1);
+
+  if (!result[0]) return null;
+
+  const hostname = `${sessionId}--${result[0].port}`;
+  return { hostname, port: result[0].port };
 }
 
 export async function getSessionContainersWithDetails(sessionId: string): Promise<
@@ -128,4 +147,25 @@ export async function getSessionContainersWithDetails(sessionId: string): Promis
     .from(sessionContainers)
     .innerJoin(containers, eq(sessionContainers.containerId, containers.id))
     .where(eq(sessionContainers.sessionId, sessionId));
+}
+
+export async function getSessionContainersWithPorts(sessionId: string): Promise<
+  {
+    hostname: string;
+    port: number;
+  }[]
+> {
+  const result = await db
+    .select({
+      port: containerPorts.port,
+    })
+    .from(sessionContainers)
+    .innerJoin(containerPorts, eq(containerPorts.containerId, sessionContainers.containerId))
+    .where(eq(sessionContainers.sessionId, sessionId))
+    .orderBy(asc(containerPorts.port));
+
+  return result.map((row) => ({
+    hostname: `${sessionId}--${row.port}`,
+    port: row.port,
+  }));
 }

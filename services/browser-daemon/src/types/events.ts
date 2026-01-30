@@ -2,6 +2,7 @@ export type DaemonEventType = "daemon:started" | "daemon:ready" | "daemon:stoppe
 
 export interface DaemonEventData {
   port?: number;
+  cdpPort?: number;
   exitCode?: number;
   error?: string;
 }

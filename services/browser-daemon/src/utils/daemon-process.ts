@@ -1,49 +1,121 @@
-import { cleanupSocket, getSocketDir, getPidFile, isDaemonRunning } from "agent-browser";
+import { cleanupSocket, getSocketDir, getPidFile } from "agent-browser";
 import { existsSync, readFileSync, mkdirSync } from "node:fs";
 import { join } from "node:path";
-import type { Subprocess } from "bun";
 
 export interface SpawnOptions {
   sessionId: string;
-  port: number;
+  streamPort: number;
+  cdpPort: number;
   profileDir?: string;
 }
 
-export function spawnDaemon(options: SpawnOptions): Subprocess {
-  const { sessionId, port, profileDir } = options;
-  const daemonPath = require.resolve("agent-browser/dist/daemon.js");
+export type WorkerMessageHandler = (message: WorkerMessage) => void;
+export type WorkerCloseHandler = (code: number) => void;
 
-  const env: Record<string, string> = {
-    ...process.env,
-    AGENT_BROWSER_DAEMON: "1",
-    AGENT_BROWSER_SESSION: sessionId,
-    AGENT_BROWSER_STREAM_PORT: String(port),
-    AGENT_BROWSER_SOCKET_DIR: getSocketDir(),
-  } as Record<string, string>;
+export interface WorkerMessage {
+  type: string;
+  data?: unknown;
+  error?: string;
+}
+
+export interface DaemonWorkerHandle {
+  worker: Worker;
+  sessionId: string;
+  navigate: (url: string) => void;
+  terminate: () => void;
+  onMessage: (handler: WorkerMessageHandler) => void;
+  onClose: (handler: WorkerCloseHandler) => void;
+}
+
+export interface DaemonWorkerConfig {
+  sessionId: string;
+  streamPort: number;
+  cdpPort: number;
+  socketDir: string;
+  profilePath?: string;
+}
+
+function buildWorkerConfig(
+  sessionId: string,
+  port: number,
+  cdpPort: number,
+  profileDir?: string,
+): DaemonWorkerConfig {
+  const config: DaemonWorkerConfig = {
+    sessionId,
+    streamPort: port,
+    cdpPort,
+    socketDir: getSocketDir(),
+  };
 
   if (profileDir) {
     const profilePath = join(profileDir, sessionId);
     if (!existsSync(profilePath)) {
       mkdirSync(profilePath, { recursive: true });
     }
-    env.AGENT_BROWSER_PROFILE = profilePath;
+    config.profilePath = profilePath;
   }
 
-  return Bun.spawn(["bun", "run", daemonPath], {
-    env,
-    stdio: ["ignore", "inherit", "inherit"],
-  });
+  return config;
 }
 
-export function killSubprocess(subprocess: Subprocess, sessionId: string): boolean {
-  try {
-    subprocess.kill("SIGTERM");
-    cleanupSocket(sessionId);
-    return true;
-  } catch (error) {
-    console.warn(`[DaemonProcess] Failed to kill subprocess for ${sessionId}:`, error);
-    return false;
-  }
+export function spawnDaemon(options: SpawnOptions): DaemonWorkerHandle {
+  const { sessionId, streamPort, cdpPort, profileDir } = options;
+  const config = buildWorkerConfig(sessionId, streamPort, cdpPort, profileDir);
+
+  const workerPath = new URL("./daemon-worker.ts", import.meta.url).href;
+  const worker = new Worker(workerPath);
+
+  const messageHandlers = new Set<WorkerMessageHandler>();
+  const closeHandlers = new Set<WorkerCloseHandler>();
+
+  worker.onmessage = (event: MessageEvent<WorkerMessage>) => {
+    if (event.data.type === "ready") {
+      worker.postMessage({ type: "init", data: config });
+      return;
+    }
+
+    for (const handler of messageHandlers) {
+      try {
+        handler(event.data);
+      } catch (error) {
+        console.error(`[DaemonProcess] Message handler error:`, error);
+      }
+    }
+  };
+
+  worker.onerror = (error) => {
+    console.error(`[DaemonProcess] Worker error for ${sessionId}:`, error);
+  };
+
+  worker.addEventListener("close", (event: Event) => {
+    const code = "code" in event && typeof event.code === "number" ? event.code : 0;
+    for (const handler of closeHandlers) {
+      try {
+        handler(code);
+      } catch (error) {
+        console.error(`[DaemonProcess] Close handler error:`, error);
+      }
+    }
+  });
+
+  return {
+    worker,
+    sessionId,
+    navigate: (url) => {
+      worker.postMessage({ type: "navigate", data: { url } });
+    },
+    terminate: () => {
+      worker.postMessage({ type: "terminate" });
+      setTimeout(() => worker.terminate(), 1000);
+    },
+    onMessage: (handler) => {
+      messageHandlers.add(handler);
+    },
+    onClose: (handler) => {
+      closeHandlers.add(handler);
+    },
+  };
 }
 
 export function killByPidFile(sessionId: string): boolean {
@@ -61,16 +133,4 @@ export function killByPidFile(sessionId: string): boolean {
     console.warn(`[DaemonProcess] Failed to kill process for ${sessionId}:`, error);
     return false;
   }
-}
-
-export async function waitForSocket(sessionId: string, timeoutMs = 3000): Promise<void> {
-  const start = Date.now();
-  const pollInterval = 50;
-
-  while (Date.now() - start < timeoutMs) {
-    if (isDaemonRunning(sessionId)) return;
-    await Bun.sleep(pollInterval);
-  }
-
-  throw new Error(`Timeout waiting for daemon socket: ${sessionId}`);
 }

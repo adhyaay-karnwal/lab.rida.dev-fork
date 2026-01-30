@@ -12,6 +12,7 @@ export const GET: RouteHandler = (_request, params, { daemonManager }) => {
     running: daemonManager.isRunning(sessionId),
     ready: daemonManager.isReady(sessionId),
     port: session?.port ?? null,
+    cdpPort: session?.cdpPort ?? null,
   });
 };
 

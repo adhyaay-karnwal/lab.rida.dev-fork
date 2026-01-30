@@ -1,6 +1,6 @@
 import type { DaemonManager } from "./daemon";
 
-export type HttpMethod = "GET" | "POST" | "DELETE";
+export type HttpMethod = "GET" | "POST" | "DELETE" | "HEAD";
 
 export interface RouteContext {
   daemonManager: DaemonManager;

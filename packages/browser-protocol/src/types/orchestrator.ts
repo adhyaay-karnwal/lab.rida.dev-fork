@@ -52,6 +52,8 @@ export interface DaemonController {
 export interface ReconcilerConfig {
   maxRetries: number;
   getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
+  getInitialNavigationUrl?: (sessionId: string, port: number) => string | Promise<string>;
+  waitForService?: (sessionId: string, port: number) => Promise<void>;
 }
 
 export interface Reconciler {
@@ -64,6 +66,8 @@ export interface OrchestratorConfig {
   reconcileIntervalMs: number;
   cleanupDelayMs: number;
   getFirstExposedPort?: (sessionId: string) => Promise<number | null>;
+  getInitialNavigationUrl?: (sessionId: string, port: number) => string | Promise<string>;
+  waitForService?: (sessionId: string, port: number) => Promise<void>;
 }
 
 export type StateChangeHandler = (sessionId: string, state: BrowserSessionState) => void;
