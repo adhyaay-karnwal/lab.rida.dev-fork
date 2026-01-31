@@ -51,7 +51,7 @@ function SplitPaneSecondary({ children }: SplitPaneSecondaryProps) {
   const { selected } = useSplitPane();
 
   return (
-    <main className="flex-1 bg-bg-muted">
+    <main className="flex-1 bg-bg">
       {typeof children === "function" ? children(selected) : children}
     </main>
   );

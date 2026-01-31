@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { Nav } from "@/components/nav";
 import { Chat } from "@/components/chat";
+import { MessagePart } from "@/components/message-part";
 import { Orchestration, useOrchestration } from "@/components/orchestration";
 import { ProjectNavigator } from "@/components/project-navigator-list";
 import { Avatar } from "@/components/avatar";
@@ -11,7 +12,7 @@ import { Hash } from "@/components/hash";
 import { TextAreaGroup } from "@/components/textarea-group";
 import { SplitPane, useSplitPane } from "@/components/split-pane";
 import { navItems, mockProjects } from "@/placeholder/data";
-import { mockMessages } from "@/placeholder/messages";
+import { mockPartsMessages } from "@/placeholder/parts";
 import { modelGroups, defaultModel } from "@/placeholder/models";
 
 function ProjectNavigatorView({ children }: { children?: React.ReactNode }) {
@@ -70,10 +71,10 @@ function ConversationView({ sessionId }: { sessionId: string | null }) {
 
   if (!session) return null;
 
-  const messages = mockMessages[sessionId] || [];
+  const partsMessages = mockPartsMessages[sessionId];
 
   return (
-    <Chat.Provider key={sessionId} initialMessages={messages}>
+    <Chat.Provider key={sessionId}>
       <Chat.Frame>
         <Chat.Header>
           <StatusIcon status={session.status} />
@@ -83,10 +84,26 @@ function ConversationView({ sessionId }: { sessionId: string | null }) {
             <Chat.HeaderTitle>{session.title}</Chat.HeaderTitle>
           </Chat.HeaderBreadcrumb>
         </Chat.Header>
-        <Chat.Messages />
-        <Chat.Input>
-          <TextAreaGroup.ModelSelector value={model} groups={modelGroups} onChange={setModel} />
-        </Chat.Input>
+        <Chat.MessageList>
+          <Chat.Messages>
+            {partsMessages?.flatMap((message) =>
+              message.parts.map((part) => (
+                <Chat.Block key={part.id} role={message.role}>
+                  <MessagePart.Root
+                    part={part}
+                    isStreaming={
+                      message.role === "assistant" &&
+                      message === partsMessages[partsMessages.length - 1]
+                    }
+                  />
+                </Chat.Block>
+              )),
+            )}
+          </Chat.Messages>
+          <Chat.Input>
+            <TextAreaGroup.ModelSelector value={model} groups={modelGroups} onChange={setModel} />
+          </Chat.Input>
+        </Chat.MessageList>
       </Chat.Frame>
     </Chat.Provider>
   );
@@ -115,7 +132,7 @@ function PromptArea() {
   };
 
   return (
-    <div className="sticky bottom-0 px-4 pb-4 pt-12 bg-linear-to-t from-bg to-transparent pointer-events-none">
+    <div className="sticky bottom-0 px-4 pb-4 pt-2 bg-linear-to-t from-bg to-transparent pointer-events-none">
       <Orchestration.List />
       <TextAreaGroup.Provider
         state={{ value: prompt }}

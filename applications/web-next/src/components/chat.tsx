@@ -1,24 +1,18 @@
 "use client";
 
 import { createContext, use, useState, type ReactNode } from "react";
+import { tv } from "tailwind-variants";
 import { TextAreaGroup } from "./textarea-group";
 
 type ChatRole = "user" | "assistant";
 
-type ChatMessage = {
-  id: string;
-  role: ChatRole;
-  content: string;
-};
-
 type ChatState = {
-  messages: ChatMessage[];
   input: string;
 };
 
 type ChatActions = {
   setInput: (value: string) => void;
-  send: () => void;
+  onSubmit: () => void;
 };
 
 type ChatContextValue = {
@@ -36,50 +30,33 @@ function useChat() {
   return context;
 }
 
-type ProviderProps = {
+function ChatProvider({
+  children,
+  onSubmit,
+}: {
   children: ReactNode;
-  initialMessages?: ChatMessage[];
-  onSend?: (message: string) => void;
-};
-
-function ChatProvider({ children, initialMessages = [], onSend }: ProviderProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>(initialMessages);
+  onSubmit?: (input: string) => void;
+}) {
   const [input, setInput] = useState("");
 
-  const send = () => {
+  const handleSubmit = () => {
     if (!input.trim()) return;
-
-    const userMessage: ChatMessage = {
-      id: crypto.randomUUID(),
-      role: "user",
-      content: input,
-    };
-
-    setMessages((prev) => [...prev, userMessage]);
+    onSubmit?.(input);
     setInput("");
-    onSend?.(input);
   };
 
   return (
-    <ChatContext value={{ state: { messages, input }, actions: { setInput, send } }}>
+    <ChatContext value={{ state: { input }, actions: { setInput, onSubmit: handleSubmit } }}>
       {children}
     </ChatContext>
   );
 }
 
-type FrameProps = {
-  children: ReactNode;
-};
-
-function ChatFrame({ children }: FrameProps) {
-  return <div className="flex flex-col h-full">{children}</div>;
+function ChatFrame({ children }: { children: ReactNode }) {
+  return <div className="relative flex flex-col h-full">{children}</div>;
 }
 
-type HeaderProps = {
-  children: ReactNode;
-};
-
-function ChatHeader({ children }: HeaderProps) {
+function ChatHeader({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-center gap-2 px-3 py-1.5 border-b border-border">{children}</div>
   );
@@ -101,56 +78,38 @@ function ChatHeaderTitle({ children }: { children: ReactNode }) {
   return <span className="text-text font-medium">{children}</span>;
 }
 
-function ChatMessages() {
-  const { state } = useChat();
-
-  if (state.messages.length === 0) {
-    return (
-      <div className="flex-1 flex items-center justify-center text-text-muted">
-        Start a conversation
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex-1 overflow-y-auto">
-      <div className="p-4 space-y-6">
-        {state.messages.map((message) => (
-          <ChatMessage key={message.id} role={message.role} content={message.content} />
-        ))}
-      </div>
-    </div>
-  );
+function ChatMessageList({ children }: { children: ReactNode }) {
+  return <div className="flex-1 overflow-y-auto">{children}</div>;
 }
 
-type MessageProps = {
-  role: ChatRole;
-  content: string;
-};
-
-function ChatMessage({ role, content }: MessageProps) {
-  return (
-    <div>
-      <span className="text-xs text-text-muted">{role === "user" ? "You" : "Assistant"}</span>
-      <p className="mt-1 text-sm text-text whitespace-pre-wrap">{content}</p>
-    </div>
-  );
+function ChatMessages({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col gap-px bg-border">{children}</div>;
 }
 
-type InputProps = {
-  children?: ReactNode;
-};
+const block = tv({
+  base: "",
+  variants: {
+    role: {
+      user: "bg-bg",
+      assistant: "bg-bg-muted",
+    },
+  },
+});
 
-function ChatInput({ children }: InputProps) {
+function ChatBlock({ role, children }: { role: ChatRole; children: ReactNode }) {
+  return <div className={block({ role })}>{children}</div>;
+}
+
+function ChatInput({ children }: { children?: ReactNode }) {
   const { state, actions } = useChat();
 
   return (
-    <div className="p-4 pt-0">
+    <div className="sticky bottom-0 px-4 pb-4 pt-2 bg-linear-to-t from-bg to-transparent pointer-events-none">
       <TextAreaGroup.Provider
         state={{ value: state.input }}
         actions={{
           onChange: actions.setInput,
-          onSubmit: actions.send,
+          onSubmit: actions.onSubmit,
         }}
       >
         <TextAreaGroup.Frame>
@@ -173,9 +132,10 @@ const Chat = {
   HeaderProject: ChatHeaderProject,
   HeaderDivider: ChatHeaderDivider,
   HeaderTitle: ChatHeaderTitle,
+  MessageList: ChatMessageList,
   Messages: ChatMessages,
-  Message: ChatMessage,
+  Block: ChatBlock,
   Input: ChatInput,
 };
 
-export { Chat, useChat, type ChatMessage, type ChatRole };
+export { Chat, useChat, type ChatRole };
