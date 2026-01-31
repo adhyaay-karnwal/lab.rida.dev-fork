@@ -1,6 +1,6 @@
 import { db } from "@lab/database/client";
 import { sessions, type Session } from "@lab/database/schema/sessions";
-import { eq } from "drizzle-orm";
+import { eq, ne, and } from "drizzle-orm";
 
 export async function findSessionById(sessionId: string): Promise<Session | null> {
   const [session] = await db.select().from(sessions).where(eq(sessions.id, sessionId));
@@ -8,7 +8,10 @@ export async function findSessionById(sessionId: string): Promise<Session | null
 }
 
 export async function findSessionsByProjectId(projectId: string): Promise<Session[]> {
-  return db.select().from(sessions).where(eq(sessions.projectId, projectId));
+  return db
+    .select()
+    .from(sessions)
+    .where(and(eq(sessions.projectId, projectId), ne(sessions.status, "deleting")));
 }
 
 export async function createSession(projectId: string, title?: string): Promise<Session> {
@@ -37,6 +40,13 @@ export async function updateSessionTitle(
   return findSessionById(sessionId);
 }
 
+export async function markSessionDeleting(sessionId: string): Promise<void> {
+  await db
+    .update(sessions)
+    .set({ status: "deleting", updatedAt: new Date() })
+    .where(eq(sessions.id, sessionId));
+}
+
 export async function deleteSession(sessionId: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.id, sessionId));
 }
@@ -50,7 +60,10 @@ export async function getAllSessionsWithOpencodeId(): Promise<
 }
 
 export async function findAllSessionSummaries(): Promise<{ id: string; projectId: string }[]> {
-  return db.select({ id: sessions.id, projectId: sessions.projectId }).from(sessions);
+  return db
+    .select({ id: sessions.id, projectId: sessions.projectId })
+    .from(sessions)
+    .where(ne(sessions.status, "deleting"));
 }
 
 export async function getSessionOpencodeId(sessionId: string): Promise<string | null> {

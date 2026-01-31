@@ -1,7 +1,11 @@
 import { docker } from "../../clients/docker";
 import { formatSessionTitle } from "../../types/session";
 import { findSessionContainersBySessionId } from "../repositories/container.repository";
-import { deleteSession, findSessionById } from "../repositories/session.repository";
+import {
+  deleteSession,
+  findSessionById,
+  markSessionDeleting,
+} from "../repositories/session.repository";
 import { proxyManager, isProxyInitialized } from "../proxy";
 import { publisher } from "../../clients/publisher";
 import type { BrowserService } from "../browser/browser-service";
@@ -13,6 +17,17 @@ export async function cleanupSession(
 ): Promise<void> {
   const session = await findSessionById(sessionId);
   if (!session) return;
+
+  await markSessionDeleting(sessionId);
+
+  publisher.publishDelta("sessions", {
+    type: "remove",
+    session: {
+      id: session.id,
+      projectId: session.projectId,
+      title: formatSessionTitle(session.id),
+    },
+  });
 
   const containers = await findSessionContainersBySessionId(sessionId);
 
@@ -37,13 +52,4 @@ export async function cleanupSession(
 
   await cleanupSessionNetwork(sessionId);
   await deleteSession(sessionId);
-
-  publisher.publishDelta("sessions", {
-    type: "remove",
-    session: {
-      id: session.id,
-      projectId: session.projectId,
-      title: formatSessionTitle(session.id),
-    },
-  });
 }
