@@ -40,8 +40,8 @@ const PATCH: RouteHandler = async (request, params) => {
 
   const body = await request.json();
 
-  if (typeof body.opcodeSessionId === "string") {
-    session = await updateSessionOpencodeId(params.sessionId, body.opcodeSessionId);
+  if (typeof body.opencodeSessionId === "string") {
+    session = await updateSessionOpencodeId(params.sessionId, body.opencodeSessionId);
   }
 
   if (typeof body.title === "string") {

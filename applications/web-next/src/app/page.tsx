@@ -32,7 +32,6 @@ import {
   useDeleteSession,
 } from "@/lib/hooks";
 import type { Project, Session } from "@lab/client";
-import { mockPartsMessages } from "@/placeholder/parts";
 import {
   Review,
   type ReviewableFile,
@@ -43,6 +42,7 @@ import {
 import { modelGroups, defaultModel } from "@/placeholder/models";
 import { Trash2 } from "lucide-react";
 import { useMultiplayer } from "@/lib/multiplayer";
+import { useAgent, type MessageState } from "@/lib/use-agent";
 
 function SessionItem({ session }: { session: Session }) {
   const { selected, select } = useSplitPane();
@@ -270,14 +270,13 @@ function ReviewTabContent({ sessionId }: { sessionId: string }) {
   );
 }
 
-function ChatTabContent({ sessionId }: { sessionId: string }) {
+function ChatTabContent({ messages }: { messages: MessageState[] }) {
   const [model, setModel] = useState(defaultModel);
-  const messages = mockPartsMessages[sessionId];
 
   return (
     <Chat.MessageList>
       <Chat.Messages>
-        {messages?.flatMap((message) =>
+        {messages.flatMap((message) =>
           message.parts.map((part) => (
             <Chat.Block key={part.id} role={message.role}>
               <MessagePart.Root
@@ -351,6 +350,8 @@ function ConversationView({
   sessionId: string | null;
   sessionData: SessionData;
 }) {
+  const { messages, sendMessage } = useAgent(sessionId ?? "");
+
   if (!sessionId) {
     return (
       <div className="flex items-center justify-center h-full text-text-muted">
@@ -363,7 +364,7 @@ function ConversationView({
   const session = sessionData?.session;
 
   return (
-    <Chat.Provider key={sessionId}>
+    <Chat.Provider key={sessionId} onSubmit={sendMessage}>
       <Chat.Frame>
         <Chat.Header>
           <StatusIcon status={(session?.status as "running" | "idle" | "complete") ?? "idle"} />
@@ -385,7 +386,7 @@ function ConversationView({
             <Chat.Tab value="stream">Stream</Chat.Tab>
           </Chat.TabList>
           <Chat.TabContent value="chat">
-            <ChatTabContent sessionId={sessionId!} />
+            <ChatTabContent messages={messages} />
           </Chat.TabContent>
           <Chat.TabContent value="review">
             <ReviewTabContent sessionId={sessionId!} />
