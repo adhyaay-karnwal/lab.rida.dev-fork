@@ -57,4 +57,12 @@ function SplitPaneSecondary({ children }: SplitPaneSecondaryProps) {
   );
 }
 
-export { SplitPane, SplitPanePrimary, SplitPaneSecondary, useSplitPane };
+const SplitPaneRoot = SplitPane;
+
+const SplitPaneNamespace = {
+  Root: SplitPaneRoot,
+  Primary: SplitPanePrimary,
+  Secondary: SplitPaneSecondary,
+};
+
+export { SplitPaneNamespace as SplitPane, useSplitPane };

@@ -203,7 +203,7 @@ export default function HomePage() {
   return (
     <div className="h-screen bg-background text-foreground flex">
       {/* Left panel - Session list */}
-      <div className="w-1/2 flex flex-col border-r border-border relative">
+      <div className="w-1/2 border-r border-border relative flex flex-col">
         {/* View tabs */}
         <div className="h-8 flex items-center gap-1 px-2 border-b border-border shrink-0">
           <button
@@ -251,7 +251,7 @@ export default function HomePage() {
         </div>
 
         {/* Content */}
-        <div className="flex-1 overflow-auto pb-48">
+        <div className="flex-1 overflow-auto">
           {view === "my-recent" &&
             allSessions.map((session) => (
               <div
@@ -430,9 +430,7 @@ export default function HomePage() {
             </div>
           )}
         </div>
-
-        {/* Floating input */}
-        <div className="absolute bottom-0 left-0 right-0 p-4 pt-12 pointer-events-none">
+        <div className="p-4 pointer-events-none">
           <div className="relative">
             <div className="absolute inset-0 -inset-x-4 bg-gradient-to-t from-background via-background to-transparent" />
             <div className="relative border border-border bg-background pointer-events-auto">

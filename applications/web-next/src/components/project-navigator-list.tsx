@@ -121,4 +121,10 @@ function ProjectNavigatorListItem({
   );
 }
 
-export { ProjectNavigatorList, ProjectNavigatorListHeader, ProjectNavigatorListItem };
+const ProjectNavigator = {
+  List: ProjectNavigatorList,
+  Header: ProjectNavigatorListHeader,
+  Item: ProjectNavigatorListItem,
+};
+
+export { ProjectNavigator };

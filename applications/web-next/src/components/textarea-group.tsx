@@ -110,7 +110,7 @@ function TextAreaGroupModelSelector({ value, groups, onChange }: ModelSelectorPr
       <select
         value={value}
         onChange={(event) => onChange(event.target.value)}
-        className="appearance-none bg-transparent text-xs text-text-secondary pr-5 cursor-pointer focus:outline-none"
+        className="appearance-none bg-transparent text-xs text-text-secondary pr-1 cursor-pointer focus:outline-none"
       >
         {groups.map((group) => (
           <optgroup key={group.provider} label={group.provider} className="bg-bg text-text">
