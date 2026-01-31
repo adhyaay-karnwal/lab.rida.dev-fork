@@ -64,7 +64,6 @@ export function createPublisher<S extends Schema>(
   getServer: () => Server<unknown>,
 ): Publisher<S> {
   function publish(channel: string, message: WireServerMessage): void {
-
     getServer().publish(channel, JSON.stringify(message));
   }
 

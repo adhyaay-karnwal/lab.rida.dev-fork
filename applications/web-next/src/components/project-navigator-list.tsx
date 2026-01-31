@@ -8,6 +8,7 @@ import { IconButton } from "./icon-button";
 const ProjectNavigatorContext = createContext<{
   expanded: boolean;
   toggle: () => void;
+  setExpanded: (expanded: boolean) => void;
 } | null>(null);
 
 function useProjectNavigator() {
@@ -28,7 +29,11 @@ function ProjectNavigatorList({ children, defaultExpanded = true }: ListProps) {
 
   return (
     <ProjectNavigatorContext
-      value={{ expanded, toggle: () => setExpanded((isExpanded) => !isExpanded) }}
+      value={{
+        expanded,
+        toggle: () => setExpanded((isExpanded) => !isExpanded),
+        setExpanded,
+      }}
     >
       <div className="flex flex-col gap-px bg-border select-none">{children}</div>
     </ProjectNavigatorContext>
@@ -50,7 +55,7 @@ type HeaderProps = {
 };
 
 function ProjectNavigatorHeader({ children, onAdd }: HeaderProps) {
-  const { expanded, toggle } = useProjectNavigator();
+  const { expanded, toggle, setExpanded } = useProjectNavigator();
 
   return (
     <div onClick={toggle} className="group flex items-center gap-2 px-3 py-1.5 bg-bg-muted">
@@ -60,6 +65,7 @@ function ProjectNavigatorHeader({ children, onAdd }: HeaderProps) {
       <IconButton
         onClick={(event) => {
           event.stopPropagation();
+          setExpanded(true);
           onAdd?.();
         }}
         className="ml-auto"
