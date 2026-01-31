@@ -1,6 +1,5 @@
 export const navItems = [
   { label: "Projects", href: "/projects" },
-  { label: "My Recent", href: "/recent" },
   { label: "Team", href: "/team" },
   { label: "Settings", href: "/settings" },
 ];
