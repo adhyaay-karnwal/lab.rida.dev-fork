@@ -26,10 +26,22 @@ export interface CreateContainerInput {
   ports?: number[];
 }
 
-export interface SessionContainer {
+export interface SessionContainerInfo {
   id: string;
   name: string;
+  image: string;
+  status: string;
+  state: string;
+  ports: Record<string, number>;
+}
+
+export interface SessionContainer {
+  id: string;
+  sessionId: string;
+  containerId: string;
+  dockerId: string;
   status: "starting" | "running" | "stopped";
+  info: SessionContainerInfo | null;
   urls: string[];
 }
 

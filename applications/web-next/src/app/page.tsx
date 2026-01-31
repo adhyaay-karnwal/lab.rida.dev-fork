@@ -23,7 +23,13 @@ import {
   mockFileTreeContents,
   mockFileContents,
 } from "@/placeholder/data";
-import { useProjects, useSessions, useCreateSession, useDeleteSession } from "@/lib/hooks";
+import {
+  useProjects,
+  useSessions,
+  useSession,
+  useCreateSession,
+  useDeleteSession,
+} from "@/lib/hooks";
 import type { Project, Session } from "@lab/client";
 import { mockPartsMessages } from "@/placeholder/parts";
 import {
@@ -362,7 +368,11 @@ function ConversationView({
           <Chat.HeaderBreadcrumb>
             <Chat.HeaderProject>{project?.name}</Chat.HeaderProject>
             <Chat.HeaderDivider />
-            <Chat.HeaderTitle>Session {sessionId.slice(0, 6)}</Chat.HeaderTitle>
+            {session?.title ? (
+              <Chat.HeaderTitle>{session.title}</Chat.HeaderTitle>
+            ) : (
+              <Chat.HeaderEmptyTitle>Unnamed Session</Chat.HeaderEmptyTitle>
+            )}
           </Chat.HeaderBreadcrumb>
         </Chat.Header>
         <Chat.Tabs>
@@ -391,6 +401,10 @@ function ConversationView({
 }
 
 function SessionInfoView({ session, onDelete }: { session: Session; onDelete: () => void }) {
+  const { data: sessionDetails } = useSession(session.id);
+  const containers = sessionDetails?.containers ?? [];
+  const links = containers.flatMap((container) => container.urls ?? []);
+
   return (
     <SessionInfoPane.Root>
       <SessionInfoPane.Section>
@@ -405,7 +419,20 @@ function SessionInfoView({ session, onDelete }: { session: Session; onDelete: ()
 
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Containers</SessionInfoPane.SectionHeader>
-        <SessionInfoPane.ContainerItem name="agent-playground" status="running" />
+        {containers.length > 0 ? (
+          containers.map((container) => {
+            const imageName = container.info?.image?.split("/").pop()?.split(":")[0] ?? "container";
+            return (
+              <SessionInfoPane.ContainerItem
+                key={container.id}
+                name={imageName}
+                status={container.status}
+              />
+            );
+          })
+        ) : (
+          <SessionInfoPane.Empty>No containers</SessionInfoPane.Empty>
+        )}
       </SessionInfoPane.Section>
 
       <SessionInfoPane.Section>
@@ -415,10 +442,11 @@ function SessionInfoView({ session, onDelete }: { session: Session; onDelete: ()
 
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Links</SessionInfoPane.SectionHeader>
-        <SessionInfoPane.LinkItem
-          href="http://agent-playground:5173"
-          label="agent-playground:5173"
-        />
+        {links.length > 0 ? (
+          links.map((url) => <SessionInfoPane.LinkItem key={url} href={url} />)
+        ) : (
+          <SessionInfoPane.Empty>No links</SessionInfoPane.Empty>
+        )}
       </SessionInfoPane.Section>
 
       <SessionInfoPane.Stream>

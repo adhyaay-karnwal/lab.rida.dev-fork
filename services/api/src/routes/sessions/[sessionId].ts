@@ -7,7 +7,14 @@ import {
 } from "../../utils/repositories/session.repository";
 import { findSessionContainersBySessionId } from "../../utils/repositories/container.repository";
 import { cleanupSession } from "../../utils/session/session-cleanup";
+import { config } from "../../config/environment";
 import type { RouteHandler } from "../../utils/handlers/route-handler";
+
+function buildContainerUrls(sessionId: string, ports: Record<string, number>): string[] {
+  return Object.keys(ports).map(
+    (containerPort) => `http://${sessionId}--${containerPort}.${config.proxyBaseDomain}`,
+  );
+}
 
 const GET: RouteHandler = async (_request, params) => {
   const session = await findSessionById(params.sessionId);
@@ -17,9 +24,10 @@ const GET: RouteHandler = async (_request, params) => {
 
   const containersWithStatus = await Promise.all(
     containers.map(async (container) => {
-      if (!container.dockerId) return { ...container, info: null };
+      if (!container.dockerId) return { ...container, info: null, urls: [] };
       const info = await docker.inspectContainer(container.dockerId);
-      return { ...container, info };
+      const urls = info?.ports ? buildContainerUrls(params.sessionId, info.ports) : [];
+      return { ...container, info, urls };
     }),
   );
 

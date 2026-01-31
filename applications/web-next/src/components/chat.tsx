@@ -68,7 +68,7 @@ function ChatHeaderBreadcrumb({ children }: { children: ReactNode }) {
 }
 
 function ChatHeaderProject({ children }: { children: ReactNode }) {
-  return <span className="text-text-muted">{children}</span>;
+  return <span className="text-text-muted text-nowrap overflow-x-hidden truncate">{children}</span>;
 }
 
 function ChatHeaderDivider() {
@@ -76,7 +76,17 @@ function ChatHeaderDivider() {
 }
 
 function ChatHeaderTitle({ children }: { children: ReactNode }) {
-  return <span className="text-text font-medium">{children}</span>;
+  return (
+    <span className="text-text font-medium text-nowrap overflow-x-hidden truncate">{children}</span>
+  );
+}
+
+function ChatHeaderEmptyTitle({ children }: { children: ReactNode }) {
+  return (
+    <span className="text-text-muted italic text-nowrap overflow-x-hidden truncate">
+      {children}
+    </span>
+  );
 }
 
 type ChatTab = "chat" | "review" | "frame" | "stream";
@@ -153,6 +163,7 @@ const Chat = {
   HeaderProject: ChatHeaderProject,
   HeaderDivider: ChatHeaderDivider,
   HeaderTitle: ChatHeaderTitle,
+  HeaderEmptyTitle: ChatHeaderEmptyTitle,
   Tabs: ChatTabs,
   TabList: Tabs.List,
   Tab: ChatTabItem,

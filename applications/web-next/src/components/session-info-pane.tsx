@@ -50,7 +50,7 @@ const statusDot = tv({
 
 function SessionInfoPaneRoot({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex flex-col gap-px bg-border h-full overflow-y-auto">
+    <div className="flex flex-col gap-px bg-border h-full overflow-y-auto overflow-x-hidden min-w-0">
       {children}
       <div className="bg-bg grow" />
     </div>
@@ -58,7 +58,7 @@ function SessionInfoPaneRoot({ children }: { children?: ReactNode }) {
 }
 
 function SessionInfoPaneSection({ children }: { children: ReactNode }) {
-  return <div className="flex flex-col gap-1 bg-bg px-3 py-2">{children}</div>;
+  return <div className="flex flex-col gap-1 bg-bg px-3 py-2 min-w-0">{children}</div>;
 }
 
 function SessionInfoPaneSectionHeader({ children }: { children: ReactNode }) {
@@ -141,16 +141,46 @@ function SessionInfoPaneTaskItem({
   );
 }
 
-function SessionInfoPaneLinkItem({ href, label }: { href: string; label?: string }) {
+function parseUrl(href: string): { protocol: string; subdomain: string; domain: string } | null {
+  try {
+    const url = new URL(href);
+    const hostnameParts = url.hostname.split(".");
+    if (hostnameParts.length < 2) return null;
+    const subdomain = hostnameParts.slice(0, -1).join(".");
+    const tld = hostnameParts.at(-1) ?? "";
+    return {
+      protocol: `${url.protocol}//`,
+      subdomain,
+      domain: `${tld}${url.port ? `:${url.port}` : ""}`,
+    };
+  } catch {
+    return null;
+  }
+}
+
+function SessionInfoPaneLinkItem({ href }: { href: string }) {
+  const parsed = parseUrl(href);
+
   return (
     <a
       href={href}
       target="_blank"
       rel="noopener noreferrer"
-      className={row({ interactive: true, className: text({ color: "accent" }) })}
+      className={row({
+        interactive: true,
+        className: cn(text({ color: "accent" }), "w-0 min-w-full"),
+      })}
     >
-      <ExternalLink size={12} />
-      <span className="flex-1 truncate">{label ?? href}</span>
+      <ExternalLink size={12} className="shrink-0" />
+      {parsed ? (
+        <span className="flex min-w-0">
+          <span className="shrink-0">{parsed.protocol}</span>
+          <span className="truncate">{parsed.subdomain}</span>
+          <span className="shrink-0">{parsed.domain}</span>
+        </span>
+      ) : (
+        <span className="truncate">{href}</span>
+      )}
     </a>
   );
 }
