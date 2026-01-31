@@ -1,6 +1,6 @@
 import { server, browserService, shutdownBrowserService } from "./clients/server";
-import { startContainerMonitor } from "./utils/monitors/container.monitor";
-import { startOpenCodeMonitor } from "./utils/monitors/opencode.monitor";
+import { createContainerMonitor } from "./utils/monitors/container.monitor";
+import { createOpenCodeMonitor } from "./utils/monitors/opencode.monitor";
 import { cleanupOrphanedSessions } from "./utils/browser/state-store";
 
 console.log(`API server running on http://localhost:${server.port}`);
@@ -9,10 +9,15 @@ cleanupOrphanedSessions().catch((error) => {
   console.warn("[Startup] Failed to cleanup orphaned browser sessions:", error);
 });
 
-startContainerMonitor();
-startOpenCodeMonitor();
+const containerMonitor = createContainerMonitor();
+const openCodeMonitor = createOpenCodeMonitor();
 
-async function gracefulShutdown() {
+containerMonitor.start();
+openCodeMonitor.start();
+
+function gracefulShutdown() {
+  containerMonitor.stop();
+  openCodeMonitor.stop();
   shutdownBrowserService(browserService);
   process.exit(0);
 }

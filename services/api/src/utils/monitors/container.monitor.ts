@@ -30,35 +30,60 @@ function mapEventToStatus(event: DockerContainerEvent): ContainerStatus | null {
   }
 }
 
-export async function startContainerMonitor(): Promise<void> {
-  console.log("Starting container monitor...");
+class ContainerMonitor {
+  private readonly abortController = new AbortController();
 
-  try {
-    for await (const event of docker.streamContainerEvents({
-      filters: { label: [LABELS.SESSION] },
-    })) {
-      const status = mapEventToStatus(event);
-      if (!status) continue;
-
-      const sessionId = event.attributes[LABELS.SESSION];
-      if (!sessionId) continue;
-
-      const sessionContainer = await findSessionContainerByDockerId(event.containerId);
-      if (!sessionContainer) continue;
-
-      await updateSessionContainerStatus(sessionContainer.id, status);
-
-      publisher.publishDelta(
-        "sessionContainers",
-        { uuid: sessionId },
-        {
-          type: "update",
-          container: { id: sessionContainer.id, status },
-        },
-      );
-    }
-  } catch (error) {
-    console.error("Container monitor error:", error);
-    setTimeout(() => startContainerMonitor(), TIMING.CONTAINER_MONITOR_RETRY_MS);
+  async start(): Promise<void> {
+    console.log("[Container Monitor] Starting...");
+    this.monitor();
   }
+
+  stop(): void {
+    console.log("[Container Monitor] Stopping...");
+    this.abortController.abort();
+  }
+
+  private async monitor(): Promise<void> {
+    while (!this.abortController.signal.aborted) {
+      try {
+        for await (const event of docker.streamContainerEvents({
+          filters: { label: [LABELS.SESSION] },
+        })) {
+          if (this.abortController.signal.aborted) break;
+
+          const status = mapEventToStatus(event);
+          if (!status) continue;
+
+          const sessionId = event.attributes[LABELS.SESSION];
+          if (!sessionId) continue;
+
+          const sessionContainer = await findSessionContainerByDockerId(event.containerId);
+          if (!sessionContainer) continue;
+
+          await updateSessionContainerStatus(sessionContainer.id, status);
+
+          publisher.publishDelta(
+            "sessionContainers",
+            { uuid: sessionId },
+            {
+              type: "update",
+              container: { id: sessionContainer.id, status },
+            },
+          );
+        }
+      } catch (error) {
+        if (this.abortController.signal.aborted) return;
+        console.error("[Container Monitor] Error:", error);
+        await new Promise((resolve) => setTimeout(resolve, TIMING.CONTAINER_MONITOR_RETRY_MS));
+      }
+    }
+  }
+}
+
+export function createContainerMonitor() {
+  const monitor = new ContainerMonitor();
+  return {
+    start: () => monitor.start(),
+    stop: () => monitor.stop(),
+  };
 }

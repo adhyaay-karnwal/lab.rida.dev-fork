@@ -13,13 +13,40 @@ interface FileDiff {
   deletions: number;
 }
 
-interface SessionTracker {
-  labSessionId: string;
-  opencodeSessionId: string;
-  abortController: AbortController;
+interface MessagePart {
+  type: string;
+  text?: string;
 }
 
-const trackers = new Map<string, SessionTracker>();
+interface SessionDiffEvent {
+  type: "session.diff";
+  properties: { diff: FileDiff[] };
+}
+
+interface MessageUpdatedEvent {
+  type: "message.updated";
+  properties: { parts: MessagePart[] };
+}
+
+function hasProperty<T extends string>(obj: unknown, key: T): obj is Record<T, unknown> {
+  return typeof obj === "object" && obj !== null && key in obj;
+}
+
+function parseSessionDiffEvent(event: unknown): SessionDiffEvent | null {
+  if (!hasProperty(event, "type") || event.type !== "session.diff") return null;
+  if (!hasProperty(event, "properties")) return null;
+  if (!hasProperty(event.properties, "diff")) return null;
+  if (!Array.isArray(event.properties.diff)) return null;
+  return { type: "session.diff", properties: { diff: event.properties.diff } };
+}
+
+function parseMessageUpdatedEvent(event: unknown): MessageUpdatedEvent | null {
+  if (!hasProperty(event, "type") || event.type !== "message.updated") return null;
+  if (!hasProperty(event, "properties")) return null;
+  if (!hasProperty(event.properties, "parts")) return null;
+  if (!Array.isArray(event.properties.parts)) return null;
+  return { type: "message.updated", properties: { parts: event.properties.parts } };
+}
 
 function toReviewableFile(diff: FileDiff) {
   return {
@@ -31,82 +58,145 @@ function toReviewableFile(diff: FileDiff) {
   };
 }
 
-async function monitorSession(tracker: SessionTracker): Promise<void> {
-  const { labSessionId, abortController } = tracker;
-  const directory = formatWorkspacePath(labSessionId);
+function extractTextFromParts(parts: MessagePart[]): string | null {
+  const textPart = parts.find((part) => part.type === "text" && part.text);
+  return textPart?.text ?? null;
+}
 
-  try {
-    const { stream } = await opencode.event.subscribe(
-      { directory },
-      { signal: abortController.signal },
+function processSessionDiff(labSessionId: string, event: SessionDiffEvent): void {
+  for (const diff of event.properties.diff) {
+    publisher.publishDelta(
+      "sessionChangedFiles",
+      { uuid: labSessionId },
+      { type: "add", file: toReviewableFile(diff) },
     );
-    if (!stream) return;
+  }
+}
 
-    for await (const event of stream) {
-      if (abortController.signal.aborted) break;
-      if (event.type !== "session.diff") continue;
+function processMessageUpdated(labSessionId: string, event: MessageUpdatedEvent): void {
+  const text = extractTextFromParts(event.properties.parts);
+  if (text) {
+    publisher.publishDelta("sessionMetadata", { uuid: labSessionId }, { lastMessage: text });
+  }
+}
 
-      const diffs = event.properties?.diff as FileDiff[] | undefined;
-      if (!diffs?.length) continue;
+function processEvent(labSessionId: string, event: unknown): void {
+  const diffEvent = parseSessionDiffEvent(event);
+  if (diffEvent) {
+    processSessionDiff(labSessionId, diffEvent);
+    return;
+  }
 
-      for (const diff of diffs) {
-        publisher.publishDelta(
-          "sessionChangedFiles",
-          { uuid: labSessionId },
-          { type: "add", file: toReviewableFile(diff) },
+  const messageEvent = parseMessageUpdatedEvent(event);
+  if (messageEvent) {
+    processMessageUpdated(labSessionId, messageEvent);
+  }
+}
+
+class SessionTracker {
+  private readonly abortController = new AbortController();
+
+  constructor(
+    readonly labSessionId: string,
+    readonly opencodeSessionId: string,
+  ) {
+    this.monitor();
+  }
+
+  stop(): void {
+    this.abortController.abort();
+  }
+
+  get isActive(): boolean {
+    return !this.abortController.signal.aborted;
+  }
+
+  private async monitor(): Promise<void> {
+    const directory = formatWorkspacePath(this.labSessionId);
+
+    while (this.isActive) {
+      try {
+        const { stream } = await opencode.event.subscribe(
+          { directory },
+          { signal: this.abortController.signal },
         );
+        if (!stream) return;
+
+        for await (const event of stream) {
+          if (!this.isActive) break;
+          processEvent(this.labSessionId, event);
+        }
+      } catch (error) {
+        if (!this.isActive) return;
+        console.error(`[OpenCode Monitor] Error for ${this.labSessionId}:`, error);
+        await new Promise((resolve) => setTimeout(resolve, TIMING.OPENCODE_MONITOR_RETRY_MS));
       }
     }
-  } catch (error) {
-    if (!abortController.signal.aborted) {
-      console.error(`[OpenCode Monitor] Error for ${labSessionId}:`, error);
-      setTimeout(() => monitorSession(tracker), TIMING.OPENCODE_MONITOR_RETRY_MS);
+  }
+}
+
+class OpenCodeMonitor {
+  private readonly trackers = new Map<string, SessionTracker>();
+  private readonly abortController = new AbortController();
+
+  async start(): Promise<void> {
+    console.log("[OpenCode Monitor] Starting...");
+
+    try {
+      await this.syncSessions();
+    } catch (error) {
+      console.error("[OpenCode Monitor] Initial sync failed:", error);
+    }
+
+    this.runSyncLoop();
+  }
+
+  stop(): void {
+    console.log("[OpenCode Monitor] Stopping...");
+    this.abortController.abort();
+
+    for (const tracker of this.trackers.values()) {
+      tracker.stop();
+    }
+    this.trackers.clear();
+  }
+
+  private async runSyncLoop(): Promise<void> {
+    while (!this.abortController.signal.aborted) {
+      await new Promise((resolve) => setTimeout(resolve, TIMING.OPENCODE_SYNC_INTERVAL_MS));
+      if (this.abortController.signal.aborted) return;
+
+      try {
+        await this.syncSessions();
+      } catch (error) {
+        console.error("[OpenCode Monitor] Sync failed:", error);
+      }
+    }
+  }
+
+  private async syncSessions(): Promise<void> {
+    const active = await getAllSessionsWithOpencodeId();
+    const activeIds = new Set(active.map((session) => session.id));
+
+    for (const [id, tracker] of this.trackers) {
+      if (!activeIds.has(id)) {
+        tracker.stop();
+        this.trackers.delete(id);
+      }
+    }
+
+    for (const { id, opencodeSessionId } of active) {
+      if (opencodeSessionId && !this.trackers.has(id)) {
+        this.trackers.set(id, new SessionTracker(id, opencodeSessionId));
+      }
     }
   }
 }
 
-function startTracking(labSessionId: string, opencodeSessionId: string): void {
-  if (trackers.has(labSessionId)) return;
-
-  const tracker: SessionTracker = {
-    labSessionId,
-    opencodeSessionId,
-    abortController: new AbortController(),
+export function createOpenCodeMonitor() {
+  const monitor = new OpenCodeMonitor();
+  return {
+    start: () => monitor.start(),
+    stop: () => monitor.stop(),
   };
-
-  trackers.set(labSessionId, tracker);
-  monitorSession(tracker);
-}
-
-function stopTracking(labSessionId: string): void {
-  const tracker = trackers.get(labSessionId);
-  if (!tracker) return;
-
-  tracker.abortController.abort();
-  trackers.delete(labSessionId);
-}
-
-async function syncSessions(): Promise<void> {
-  const active = await getAllSessionsWithOpencodeId();
-  const activeIds = new Set(active.map((s) => s.id));
-
-  for (const [id] of trackers) {
-    if (!activeIds.has(id)) stopTracking(id);
-  }
-
-  for (const { id, opencodeSessionId } of active) {
-    if (opencodeSessionId) startTracking(id, opencodeSessionId);
-  }
-}
-
-export async function startOpenCodeMonitor(): Promise<void> {
-  console.log("[OpenCode Monitor] Starting...");
-
-  try {
-    await syncSessions();
-  } catch (error) {
-    console.error("[OpenCode Monitor] Initial sync failed:", error);
-  }
-
-  setInterval(() => syncSessions().catch(console.error), TIMING.OPENCODE_SYNC_INTERVAL_MS);
 }

@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
-import { createOpencodeClient, type Message, type Part, type Event } from "@opencode-ai/sdk/client";
+import { createOpencodeClient, type Message, type Part } from "@opencode-ai/sdk/client";
 import { api } from "./api";
+import { subscribeToSessionEvents, type Event } from "./opencode-events";
 
 interface LoadedMessage {
   info: Message;
@@ -46,12 +47,6 @@ function createSessionClient(labSessionId: string) {
   return createOpencodeClient({
     baseUrl: `${getApiUrl()}/opencode`,
     headers: { "X-Lab-Session-Id": labSessionId },
-  });
-}
-
-function createGlobalEventClient() {
-  return createOpencodeClient({
-    baseUrl: `${getApiUrl()}/opencode`,
   });
 }
 
@@ -221,7 +216,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
   }, [labSessionId, opencodeClient]);
 
   useEffect(() => {
-    if (!opencodeClient || !opencodeSessionId) return;
+    if (!opencodeSessionId) return;
 
     const abortController = new AbortController();
 
@@ -267,50 +262,12 @@ export function useAgent(labSessionId: string): UseAgentResult {
       }
     };
 
-    const instanceId = Math.random().toString(36).slice(2, 6);
-    console.log(`[${instanceId}] effect started`);
-
-    const subscribe = async (): Promise<void> => {
-      console.log(`[${instanceId}] subscribe called, aborted: ${abortController.signal.aborted}`);
-      if (abortController.signal.aborted) return;
-
-      try {
-        console.log(`[${instanceId}] calling event.subscribe...`);
-        const { stream } = await opencodeClient.event.subscribe({
-          signal: abortController.signal,
-        });
-        console.log(`[${instanceId}] got stream, aborted: ${abortController.signal.aborted}`);
-
-        for await (const event of stream) {
-          if (abortController.signal.aborted) {
-            console.log(`[${instanceId}] aborted during iteration`);
-            return;
-          }
-          processEvent(event);
-        }
-
-        console.log(
-          `[${instanceId}] stream ended cleanly, aborted: ${abortController.signal.aborted}`,
-        );
-        if (!abortController.signal.aborted) {
-          setTimeout(() => subscribe(), 1000);
-        }
-      } catch (error) {
-        console.log(
-          `[${instanceId}] caught error, aborted: ${abortController.signal.aborted}`,
-          error,
-        );
-        if (abortController.signal.aborted) return;
-        setTimeout(() => subscribe(), 1000);
-      }
-    };
-
-    subscribe();
+    subscribeToSessionEvents(labSessionId, processEvent, abortController.signal);
 
     return () => {
       abortController.abort();
     };
-  }, [opencodeClient, opencodeSessionId]);
+  }, [labSessionId, opencodeSessionId]);
 
   const sendMessage = useCallback(
     async ({ content, modelId }: SendMessageOptions) => {
@@ -327,7 +284,8 @@ export function useAgent(labSessionId: string): UseAgentResult {
           path: { id: opencodeSessionId },
           body: {
             parts: [{ type: "text", text: content }],
-            model: providerID && modelID ? { providerID, modelID } : undefined,
+            providerID,
+            modelID,
           },
         });
 

@@ -87,10 +87,16 @@ export function useCreateSession() {
 
       mutate(
         cacheKey,
-        (current: Session[] = []) =>
-          current.map((session) =>
-            session.id === tempId ? { ...session, ...realSession } : session,
-          ),
+        (current: Session[] = []) => {
+          const seen = new Set<string>();
+          return current
+            .map((session) => (session.id === tempId ? { ...session, ...realSession } : session))
+            .filter((session) => {
+              if (seen.has(session.id)) return false;
+              seen.add(session.id);
+              return true;
+            });
+        },
         false,
       );
 

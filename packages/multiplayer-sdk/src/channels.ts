@@ -25,7 +25,7 @@ const LogEntrySchema = z.object({
 const SessionSchema = z.object({
   id: z.string(),
   projectId: z.string(),
-  title: z.string(),
+  title: z.string().nullable(),
   hasUnread: z.boolean().optional(),
   isWorking: z.boolean().optional(),
 });

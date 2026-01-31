@@ -196,8 +196,12 @@ function applyArrayDelta(array: unknown[], delta: Record<string, unknown>): unkn
     case "append":
       return "message" in delta ? [...array, delta.message] : array;
 
-    case "add":
-      return item ? [...array, item] : array;
+    case "add": {
+      if (!item) return array;
+      const key = getKey(item);
+      const exists = array.some((element) => isIdentifiable(element) && getKey(element) === key);
+      return exists ? array : [...array, item];
+    }
 
     case "remove": {
       if (!item) return array;

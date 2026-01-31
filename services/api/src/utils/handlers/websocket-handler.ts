@@ -77,6 +77,11 @@ export function createWebSocketHandlers(browserService: BrowserService) {
         if (!subscribers || !subscribers.has(ws)) return;
 
         subscribers.delete(ws);
+
+        if (subscribers.size === 0) {
+          sessionSubscribers.delete(sessionId);
+        }
+
         browserService.unsubscribeBrowser(sessionId).catch((error) => {
           console.warn(`[WebSocket] Failed to unsubscribe from browser ${sessionId}:`, error);
         });

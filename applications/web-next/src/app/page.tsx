@@ -44,16 +44,13 @@ import { defaultModel } from "@/placeholder/models";
 import { Trash2 } from "lucide-react";
 import { useMultiplayer } from "@/lib/multiplayer";
 import { useAgent, prefetchSessionMessages, type MessageState } from "@/lib/use-agent";
+import { useSessionStatus } from "@/lib/use-session-status";
+import { useSessionsSync } from "@/lib/use-sessions-sync";
 
 function SessionItem({ session }: { session: Session }) {
   const { selected, select } = useSplitPane();
   const isTemp = session.id.startsWith("temp-");
-  const hasStartingContainer = session.containers?.some(
-    (container) => container.status === "starting",
-  );
-
-  const isLoading = session.status === "creating" || hasStartingContainer;
-  const displayStatus = isLoading ? "loading" : session.status;
+  const status = useSessionStatus(session);
 
   const handleMouseDown = () => {
     if (isTemp) return;
@@ -66,7 +63,7 @@ function SessionItem({ session }: { session: Session }) {
       onClick={() => select(session.id)}
       onMouseDown={handleMouseDown}
     >
-      <StatusIcon status={displayStatus} />
+      <StatusIcon status={isTemp ? "starting" : status} />
       {isTemp ? <ProjectNavigator.ItemSkeletonBlock /> : <Hash>{session.id.slice(0, 6)}</Hash>}
       {session.title ? (
         <ProjectNavigator.ItemTitle>{session.title}</ProjectNavigator.ItemTitle>
@@ -103,6 +100,8 @@ function ProjectSessionsList({ project }: { project: Project }) {
 
 function ProjectNavigatorView({ children }: { children?: React.ReactNode }) {
   const { data: projects, isLoading, error } = useProjects();
+
+  useSessionsSync();
 
   return (
     <div className="flex-1 overflow-y-auto flex flex-col justify-between">
