@@ -135,9 +135,6 @@ export function useAgent(labSessionId: string): UseAgentResult {
   }, [labSessionId]);
 
   useEffect(() => {
-    setOpencodeSessionId(null);
-    currentOpencodeSessionRef.current = null;
-
     const cached = sessionCache.get(labSessionId);
     if (cached) {
       setMessages(cached.messages);
@@ -147,7 +144,8 @@ export function useAgent(labSessionId: string): UseAgentResult {
       return;
     }
 
-    setMessages([]);
+    setOpencodeSessionId(null);
+    currentOpencodeSessionRef.current = null;
 
     if (!labSessionId || !opencodeClient) {
       setIsLoading(false);
@@ -191,6 +189,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
             return;
           }
         }
+
 
         const sessionId = await getOrCreateOpencodeSession();
         if (cancelled) return;

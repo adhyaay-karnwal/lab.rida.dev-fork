@@ -3,10 +3,7 @@
 import type { ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
 import { tv } from "tailwind-variants";
-import { IconButton } from "@/components/icon-button";
-import { PageFrame, Header } from "@/components/layout-primitives";
 import { settingsTabs } from "@/config/settings";
 
 const tab = tv({
@@ -18,19 +15,6 @@ const tab = tv({
     },
   },
 });
-
-function SettingsHeader() {
-  return (
-    <Header>
-      <Link className="flex items-center" href="/editor">
-        <IconButton>
-          <ArrowLeft size={14} />
-        </IconButton>
-      </Link>
-      <span className="text-text font-medium">Settings</span>
-    </Header>
-  );
-}
 
 function SettingsTabs() {
   const pathname = usePathname();
@@ -59,10 +43,9 @@ type SettingsShellProps = {
 
 export function SettingsShell({ children }: SettingsShellProps) {
   return (
-    <PageFrame overflow="hidden">
-      <SettingsHeader />
+    <div className="flex flex-col flex-1 min-h-0 overflow-hidden">
       <SettingsTabs />
       {children}
-    </PageFrame>
+    </div>
   );
 }

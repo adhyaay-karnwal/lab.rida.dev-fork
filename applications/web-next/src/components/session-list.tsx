@@ -6,16 +6,18 @@ import type { ReactNode } from "react";
 import type { Project, Session } from "@lab/client";
 import { tv } from "tailwind-variants";
 import { useProjects, useSessions, useCreateSession, useSessionCreation } from "@/lib/hooks";
+import { prefetchSessionMessages } from "@/lib/use-agent";
+import { prefetchSessionContainers } from "@/lib/api";
 import { StatusIcon } from "./status-icon";
 import { Hash } from "./hash";
 import { IconButton } from "./icon-button";
 
 const row = tv({
-  base: "flex items-center gap-3 py-2 cursor-pointer transition-colors",
+  base: "flex items-center gap-3 py-2 cursor-pointer",
   variants: {
     type: {
       project: "text-text-secondary",
-      session: "hover:text-text",
+      session: "hover:brightness-75",
     },
   },
 });
@@ -65,12 +67,17 @@ function SessionListProject({ project, children }: { project: Project; children?
 function SessionListItem({ session }: { session: Session }) {
   const router = useRouter();
 
+  const handleMouseDown = () => {
+    prefetchSessionMessages(session.id);
+    prefetchSessionContainers(session.id);
+  };
+
   const handleClick = () => {
     router.push(`/editor/${session.id}/chat`);
   };
 
   return (
-    <div onClick={handleClick} className={row({ type: "session" })}>
+    <div onMouseDown={handleMouseDown} onClick={handleClick} className={row({ type: "session" })}>
       <StatusIcon status={session.status} />
       <Hash>{session.id.slice(0, 6)}</Hash>
       {session.title ? (
