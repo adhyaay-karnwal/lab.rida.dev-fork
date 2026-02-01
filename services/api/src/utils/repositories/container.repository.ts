@@ -169,3 +169,22 @@ export async function getSessionContainersWithPorts(sessionId: string): Promise<
     port: row.port,
   }));
 }
+
+export async function getSessionContainersForReconciliation(sessionId: string): Promise<
+  {
+    containerId: string;
+    dockerId: string;
+    port: number;
+  }[]
+> {
+  return db
+    .select({
+      containerId: sessionContainers.containerId,
+      dockerId: sessionContainers.dockerId,
+      port: containerPorts.port,
+    })
+    .from(sessionContainers)
+    .innerJoin(containerPorts, eq(containerPorts.containerId, sessionContainers.containerId))
+    .where(eq(sessionContainers.sessionId, sessionId))
+    .orderBy(asc(containerPorts.port));
+}

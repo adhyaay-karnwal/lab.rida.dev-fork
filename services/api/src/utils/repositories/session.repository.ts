@@ -76,3 +76,7 @@ export async function getSessionOpencodeId(sessionId: string): Promise<string | 
     .limit(1);
   return session?.opencodeSessionId ?? null;
 }
+
+export async function findRunningSessions(): Promise<{ id: string }[]> {
+  return db.select({ id: sessions.id }).from(sessions).where(eq(sessions.status, "running"));
+}
