@@ -1,3 +1,4 @@
+import { useMemo, useCallback, useEffect } from "react";
 import useSWR, { useSWRConfig } from "swr";
 import { atom, useAtom } from "jotai";
 import { atomWithStorage } from "jotai/utils";
@@ -8,6 +9,42 @@ const preferredModelAtom = atomWithStorage<string | null>("preferred-model", nul
 
 export function usePreferredModel() {
   return useAtom(preferredModelAtom);
+}
+
+interface UseModelSelectionOptions {
+  syncTo?: (modelId: string) => void;
+  currentSyncedValue?: string | null;
+}
+
+export function useModelSelection(options?: UseModelSelectionOptions) {
+  const { data: modelGroups, isLoading } = useModels();
+  const [preferredModel, setPreferredModel] = usePreferredModel();
+
+  const modelId = useMemo(() => {
+    if (!modelGroups) return null;
+
+    const allModels = modelGroups.flatMap(({ models }) => models);
+    const validModel = allModels.find(({ value }) => value === preferredModel);
+    const fallback = modelGroups[0]?.models[0];
+
+    return validModel?.value ?? fallback?.value ?? null;
+  }, [modelGroups, preferredModel]);
+
+  useEffect(() => {
+    if (modelId && options?.syncTo && options.currentSyncedValue === null) {
+      options.syncTo(modelId);
+    }
+  }, [modelId, options?.syncTo, options?.currentSyncedValue]);
+
+  const setModelId = useCallback(
+    (value: string) => {
+      setPreferredModel(value);
+      options?.syncTo?.(value);
+    },
+    [setPreferredModel, options?.syncTo],
+  );
+
+  return { modelGroups, modelId, setModelId, isLoading };
 }
 
 interface CreationState {

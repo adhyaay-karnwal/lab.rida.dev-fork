@@ -7,9 +7,8 @@ import { TextAreaGroup } from "@/components/textarea-group";
 import { Orchestration } from "@/components/orchestration";
 import { SessionList } from "@/components/session-list";
 import { navItems } from "@/placeholder/data";
-import { useModels } from "@/lib/hooks";
+import { useModelSelection } from "@/lib/hooks";
 import { useOrchestrate } from "@/lib/use-orchestrate";
-import { defaultModel } from "@/placeholder/models";
 
 function mapToIndicatorStatus(status: string): "thinking" | "delegating" | "starting" | null {
   if (status === "pending" || status === "thinking") return "thinking";
@@ -20,15 +19,14 @@ function mapToIndicatorStatus(status: string): "thinking" | "delegating" | "star
 
 function OrchestratorPrompt() {
   const [prompt, setPrompt] = useState("");
-  const [model, setModel] = useState(defaultModel);
-  const { data: modelGroups } = useModels();
+  const { modelGroups, modelId, setModelId } = useModelSelection();
   const { submit, state } = useOrchestrate();
 
   const handleSubmit = async () => {
     if (!prompt.trim()) return;
     const content = prompt.trim();
     setPrompt("");
-    await submit(content, { modelId: model });
+    await submit(content, { modelId: modelId ?? undefined });
   };
 
   const indicatorStatus = mapToIndicatorStatus(state.status);
@@ -53,8 +51,12 @@ function OrchestratorPrompt() {
         <TextAreaGroup.Frame>
           <TextAreaGroup.Input />
           <TextAreaGroup.Toolbar>
-            {modelGroups && (
-              <TextAreaGroup.ModelSelector value={model} groups={modelGroups} onChange={setModel} />
+            {modelGroups && modelId && (
+              <TextAreaGroup.ModelSelector
+                value={modelId}
+                groups={modelGroups}
+                onChange={setModelId}
+              />
             )}
             <TextAreaGroup.Submit />
           </TextAreaGroup.Toolbar>
