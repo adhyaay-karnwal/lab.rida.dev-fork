@@ -231,6 +231,7 @@ export function ProjectCreate() {
   const router = useRouter();
   const { mutate } = useSWRConfig();
   const [name, setName] = useState("");
+  const [description, setDescription] = useState("");
   const [systemPrompt, setSystemPrompt] = useState("");
   const [containers, setContainers] = useState<ContainerDraft[]>([]);
   const [showSystemPrompt, setShowSystemPrompt] = useState(false);
@@ -259,6 +260,7 @@ export function ProjectCreate() {
     try {
       const project = await api.projects.create({
         name: name.trim(),
+        description: description.trim() || undefined,
         systemPrompt: systemPrompt.trim() || undefined,
       });
 
@@ -291,6 +293,16 @@ export function ProjectCreate() {
             onChange={(event) => setName(event.target.value)}
             placeholder="my-project"
           />
+        </SettingsFormField>
+
+        <SettingsFormField>
+          <FormInput.Label>Description</FormInput.Label>
+          <FormInput.Text
+            value={description}
+            onChange={(event) => setDescription(event.target.value)}
+            placeholder="A brief description of this project"
+          />
+          <FormInput.Helper>Used for task routing in orchestration</FormInput.Helper>
         </SettingsFormField>
 
         {showSystemPrompt ? (

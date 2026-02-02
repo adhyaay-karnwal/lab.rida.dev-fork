@@ -1,9 +1,10 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import { createContext, HTMLProps, use, useState, type ReactNode } from "react";
 import { ChevronRight, Box, Plus, Loader2 } from "lucide-react";
 import { tv } from "tailwind-variants";
 import { IconButton } from "./icon-button";
+import clsx from "clsx";
 
 const ProjectNavigatorContext = createContext<{
   expanded: boolean;
@@ -141,14 +142,24 @@ function ProjectNavigatorItemTitle({
   empty?: boolean;
 }) {
   if (empty) {
-    return <span className="text-text-muted italic truncate">Unnamed Session</span>;
+    return (
+      <span className="text-text-muted italic truncate block overflow-hidden">Unnamed Session</span>
+    );
   }
 
-  return <span className="text-text truncate">{children}</span>;
+  return <span className="text-text truncate block overflow-hidden">{children}</span>;
 }
 
-function ProjectNavigatorItemDescription({ children }: { children?: ReactNode }) {
-  return <span className="text-text-muted text-right truncate">{children}</span>;
+function ProjectNavigatorItemDescription({
+  children,
+  className,
+  ...props
+}: { children?: ReactNode } & HTMLProps<HTMLSpanElement>) {
+  return (
+    <span {...props} className={clsx("text-text-muted text-right truncate", className)}>
+      {children}
+    </span>
+  );
 }
 
 const ProjectNavigator = {

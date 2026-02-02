@@ -5,6 +5,8 @@ import type {
   CreateContainerInput,
   Session,
   Model,
+  OrchestrationInput,
+  OrchestrationResult,
 } from "./types";
 
 export interface ClientConfig {
@@ -89,6 +91,12 @@ export function createClient(config: ClientConfig) {
     models: {
       list: () => request<{ models: Model[] }>("/models"),
     },
+
+    orchestrate: (input: OrchestrationInput) =>
+      request<OrchestrationResult>("/orchestrate", {
+        method: "POST",
+        body: JSON.stringify(input),
+      }),
   };
 }
 

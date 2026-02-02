@@ -1,44 +1,48 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { CenteredLayout } from "@/components/centered-layout";
 import { Nav } from "@/components/nav";
 import { TextAreaGroup } from "@/components/textarea-group";
-import { Orchestration, useOrchestration } from "@/components/orchestration";
+import { Orchestration } from "@/components/orchestration";
 import { SessionList } from "@/components/session-list";
 import { navItems } from "@/placeholder/data";
 import { useModels } from "@/lib/hooks";
+import { useOrchestrate } from "@/lib/use-orchestrate";
 import { defaultModel } from "@/placeholder/models";
 
+function mapToIndicatorStatus(status: string): "thinking" | "delegating" | "starting" | null {
+  if (status === "pending" || status === "thinking") return "thinking";
+  if (status === "delegating") return "delegating";
+  if (status === "starting") return "starting";
+  return null;
+}
+
 function OrchestratorPrompt() {
-  const router = useRouter();
   const [prompt, setPrompt] = useState("");
   const [model, setModel] = useState(defaultModel);
   const { data: modelGroups } = useModels();
-  const orchestration = useOrchestration();
+  const { submit, state } = useOrchestrate();
 
   const handleSubmit = async () => {
     if (!prompt.trim()) return;
-
-    const id = orchestration.add({ status: "thinking" });
+    const content = prompt.trim();
     setPrompt("");
-
-    await new Promise((resolve) => setTimeout(resolve, 1500));
-    orchestration.update(id, { status: "delegating" });
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    orchestration.update(id, { status: "starting", projectName: "opencode-web" });
-
-    await new Promise((resolve) => setTimeout(resolve, 1000));
-    orchestration.remove(id);
-
-    router.push("/editor");
+    await submit(content, { modelId: model });
   };
+
+  const indicatorStatus = mapToIndicatorStatus(state.status);
 
   return (
     <div className="w-full">
-      <Orchestration.List />
+      {indicatorStatus && (
+        <div className="flex flex-col gap-2 mb-2">
+          <Orchestration.Indicator
+            status={indicatorStatus}
+            projectName={state.projectName ?? undefined}
+          />
+        </div>
+      )}
       <TextAreaGroup.Provider
         state={{ value: prompt }}
         actions={{
@@ -62,18 +66,16 @@ function OrchestratorPrompt() {
 
 export default function Page() {
   return (
-    <Orchestration.Provider>
-      <div className="flex flex-col h-screen">
-        <Nav items={navItems} />
-        <CenteredLayout.Root>
-          <CenteredLayout.Hero>
-            <OrchestratorPrompt />
-          </CenteredLayout.Hero>
-          <CenteredLayout.Content>
-            <SessionList.View />
-          </CenteredLayout.Content>
-        </CenteredLayout.Root>
-      </div>
-    </Orchestration.Provider>
+    <div className="flex flex-col h-screen">
+      <Nav items={navItems} />
+      <CenteredLayout.Root>
+        <CenteredLayout.Hero>
+          <OrchestratorPrompt />
+        </CenteredLayout.Hero>
+        <CenteredLayout.Content>
+          <SessionList.View />
+        </CenteredLayout.Content>
+      </CenteredLayout.Root>
+    </div>
   );
 }

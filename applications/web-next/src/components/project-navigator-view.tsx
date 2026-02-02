@@ -23,7 +23,7 @@ type SessionItemProps = {
 function SessionItem({ session, isSelected }: SessionItemProps) {
   const { useChannel } = useMultiplayer();
   const metadata = useChannel("sessionMetadata", { uuid: session.id });
-  const status = useSessionStatus(session, { subscribeToEvents: isSelected });
+  const status = useSessionStatus(session);
 
   const handleMouseDown = () => {
     prefetchSessionMessages(session.id);
@@ -33,14 +33,14 @@ function SessionItem({ session, isSelected }: SessionItemProps) {
   return (
     <Link href={`/editor/${session.id}/chat`} className="contents">
       <ProjectNavigator.Item selected={isSelected} onMouseDown={handleMouseDown}>
-        <StatusIcon status={status} />
-        <Hash>{session.id.slice(0, 6)}</Hash>
-        <div className="shrink-0">
+        <div className="max-w-1/2 flex items-center gap-2">
+          <StatusIcon status={status} />
+          <Hash>{session.id.slice(0, 6)}</Hash>
           <ProjectNavigator.ItemTitle empty={!session.title}>
             {session.title}
           </ProjectNavigator.ItemTitle>
         </div>
-        <div className="flex gap-2 justify-end grow min-w-0">
+        <div className="flex grow overflow-hidden">
           <ProjectNavigator.ItemDescription>
             {metadata.lastMessage}
           </ProjectNavigator.ItemDescription>

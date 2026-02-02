@@ -64,10 +64,18 @@ export async function findProjectSummaries() {
   return db.select({ id: projects.id, name: projects.name }).from(projects);
 }
 
-export async function createProject(data: { name: string; systemPrompt?: string }) {
+export async function createProject(data: {
+  name: string;
+  description?: string;
+  systemPrompt?: string;
+}) {
   const [project] = await db
     .insert(projects)
-    .values({ name: data.name, systemPrompt: data.systemPrompt })
+    .values({
+      name: data.name,
+      description: data.description,
+      systemPrompt: data.systemPrompt,
+    })
     .returning();
   return project;
 }

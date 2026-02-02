@@ -75,7 +75,7 @@ export async function loadSessionMetadata(sessionId: string) {
   const title = session?.title ?? "";
 
   if (!session?.opencodeSessionId) {
-    return { title, participantCount: 0 };
+    return { title, inferenceStatus: "idle" as const, participantCount: 0 };
   }
 
   try {
@@ -86,9 +86,11 @@ export async function loadSessionMetadata(sessionId: string) {
       (part: { type: string; text?: string }) => part.type === "text" && part.text,
     );
 
-    return { title, lastMessage: textPart?.text, participantCount: 0 };
+    const text = textPart && "text" in textPart && textPart.text;
+
+    return { title, lastMessage: text, inferenceStatus: "idle" as const, participantCount: 0 };
   } catch {
-    return { title, participantCount: 0 };
+    return { title, inferenceStatus: "idle" as const, participantCount: 0 };
   }
 }
 
@@ -118,5 +120,11 @@ export function createSnapshotLoaders(
       return { lastFrame: frame ?? null, timestamp: frame ? Date.now() : null };
     },
     sessionBrowserInput: async () => ({}),
+    orchestrationStatus: async () => ({
+      status: "pending",
+      projectName: null,
+      sessionId: null,
+      errorMessage: null,
+    }),
   };
 }

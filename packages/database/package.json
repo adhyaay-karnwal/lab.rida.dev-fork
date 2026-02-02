@@ -38,6 +38,10 @@
     "./schema/browser-sessions": {
       "types": "./src/schema/browser-sessions.ts",
       "default": "./src/schema/browser-sessions.ts"
+    },
+    "./schema/orchestration-requests": {
+      "types": "./src/schema/orchestration-requests.ts",
+      "default": "./src/schema/orchestration-requests.ts"
     }
   },
   "scripts": {

@@ -8,6 +8,7 @@ export interface ProjectContainer {
 export interface Project {
   id: string;
   name: string;
+  description: string | null;
   systemPrompt: string | null;
   containers: ProjectContainer[];
   createdAt: string;
@@ -16,6 +17,7 @@ export interface Project {
 
 export interface CreateProjectInput {
   name: string;
+  description?: string;
   systemPrompt?: string;
 }
 
@@ -71,4 +73,17 @@ export interface Model {
   providerName: string;
   modelId: string;
   name: string;
+}
+
+export interface OrchestrationInput {
+  content: string;
+  channelId?: string;
+  modelId?: string;
+}
+
+export interface OrchestrationResult {
+  orchestrationId: string;
+  sessionId: string;
+  projectId: string;
+  projectName: string;
 }

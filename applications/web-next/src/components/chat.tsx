@@ -78,11 +78,7 @@ function ChatHeader({ children }: { children: ReactNode }) {
 }
 
 function ChatHeaderBreadcrumb({ children }: { children: ReactNode }) {
-  return <div className="flex items-center gap-1">{children}</div>;
-}
-
-function ChatHeaderProject({ children }: { children: ReactNode }) {
-  return <span className="text-text-muted text-nowrap overflow-x-hidden truncate">{children}</span>;
+  return <div className="flex items-center gap-1 overflow-x-hidden">{children}</div>;
 }
 
 function ChatHeaderDivider() {
@@ -174,7 +170,6 @@ const Chat = {
   Frame: ChatFrame,
   Header: ChatHeader,
   HeaderBreadcrumb: ChatHeaderBreadcrumb,
-  HeaderProject: ChatHeaderProject,
   HeaderDivider: ChatHeaderDivider,
   HeaderTitle: ChatHeaderTitle,
   HeaderEmptyTitle: ChatHeaderEmptyTitle,

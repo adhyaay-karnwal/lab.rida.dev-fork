@@ -31,7 +31,7 @@ export default function EditorLayout({ children }: { children: ReactNode }) {
         <Nav items={navItems} />
         <div className="flex flex-1 min-h-0">
           <Sidebar selectedSessionId={sessionId} />
-          <main className="flex-1 bg-bg">{children}</main>
+          <main className="flex-1 bg-bg overflow-x-hidden">{children}</main>
         </div>
       </div>
     </OpenCodeSessionProvider>

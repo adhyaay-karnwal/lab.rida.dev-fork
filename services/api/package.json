@@ -9,12 +9,15 @@
     "format": "oxfmt ."
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^3.0.35",
+    "@ai-sdk/openai": "^3.0.25",
     "@lab/browser-protocol": "workspace:*",
     "@lab/database": "workspace:*",
     "@lab/multiplayer-sdk": "workspace:*",
     "@lab/multiplayer-server": "workspace:*",
     "@lab/sandbox-docker": "workspace:*",
     "@opencode-ai/sdk": "^1.1.41",
+    "ai": "^6.0.67",
     "drizzle-orm": "^0.38.0",
     "sodium-native": "^5.0.10",
     "zod": "^4.3.6"

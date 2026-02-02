@@ -39,7 +39,7 @@ export async function updateSessionOpencodeId(
 
 export async function updateSessionTitle(
   sessionId: string,
-  title: string,
+  title?: string,
 ): Promise<Session | null> {
   await db.update(sessions).set({ title, updatedAt: new Date() }).where(eq(sessions.id, sessionId));
 

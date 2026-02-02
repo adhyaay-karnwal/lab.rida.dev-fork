@@ -33,6 +33,10 @@ interface MessagePartUpdatedEvent {
   properties: { part: MessagePart };
 }
 
+interface SessionIdleEvent {
+  type: "session.idle";
+}
+
 function hasProperty<T extends string>(obj: unknown, key: T): obj is Record<T, unknown> {
   return typeof obj === "object" && obj !== null && key in obj;
 }
@@ -63,6 +67,11 @@ function parseMessagePartUpdatedEvent(event: unknown): MessagePartUpdatedEvent |
   };
 }
 
+function parseSessionIdleEvent(event: unknown): SessionIdleEvent | null {
+  if (!hasProperty(event, "type") || event.type !== "session.idle") return null;
+  return { type: "session.idle" };
+}
+
 function toReviewableFile(diff: FileDiff) {
   return {
     path: diff.file,
@@ -91,15 +100,33 @@ function processSessionDiff(labSessionId: string, event: SessionDiffEvent): void
 function processMessageUpdated(labSessionId: string, event: MessageUpdatedEvent): void {
   const text = extractTextFromParts(event.properties.parts);
   if (text) {
-    publisher.publishDelta("sessionMetadata", { uuid: labSessionId }, { lastMessage: text });
+    publisher.publishDelta(
+      "sessionMetadata",
+      { uuid: labSessionId },
+      {
+        lastMessage: text,
+        inferenceStatus: "generating",
+      },
+    );
   }
 }
 
 function processMessagePartUpdated(labSessionId: string, event: MessagePartUpdatedEvent): void {
   const part = event.properties.part;
   if (part.type === "text" && part.text) {
-    publisher.publishDelta("sessionMetadata", { uuid: labSessionId }, { lastMessage: part.text });
+    publisher.publishDelta(
+      "sessionMetadata",
+      { uuid: labSessionId },
+      {
+        lastMessage: part.text,
+        inferenceStatus: "generating",
+      },
+    );
   }
+}
+
+function processSessionIdle(labSessionId: string): void {
+  publisher.publishDelta("sessionMetadata", { uuid: labSessionId }, { inferenceStatus: "idle" });
 }
 
 function processEvent(labSessionId: string, event: unknown): void {
@@ -118,6 +145,12 @@ function processEvent(labSessionId: string, event: unknown): void {
   const partEvent = parseMessagePartUpdatedEvent(event);
   if (partEvent) {
     processMessagePartUpdated(labSessionId, partEvent);
+    return;
+  }
+
+  const idleEvent = parseSessionIdleEvent(event);
+  if (idleEvent) {
+    processSessionIdle(labSessionId);
   }
 }
 

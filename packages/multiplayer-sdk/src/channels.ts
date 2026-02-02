@@ -62,12 +62,14 @@ export const schema = defineSchema({
       snapshot: z.object({
         title: z.string(),
         lastMessage: z.string().optional(),
+        inferenceStatus: z.enum(["idle", "generating"]),
         participantCount: z.number(),
       }),
-      default: { title: "", participantCount: 0 },
+      default: { title: "", inferenceStatus: "idle", participantCount: 0 },
       delta: z.object({
         title: z.string().optional(),
         lastMessage: z.string().optional(),
+        inferenceStatus: z.enum(["idle", "generating"]).optional(),
       }),
     }),
 
@@ -237,6 +239,30 @@ export const schema = defineSchema({
           text: z.string(),
         }),
       ]),
+    }),
+
+    orchestrationStatus: defineChannel({
+      path: "orchestration/:uuid/status",
+      snapshot: z.object({
+        status: z.enum(["pending", "thinking", "delegating", "starting", "complete", "error"]),
+        projectName: z.string().nullable(),
+        sessionId: z.string().nullable(),
+        errorMessage: z.string().nullable(),
+      }),
+      default: {
+        status: "pending",
+        projectName: null,
+        sessionId: null,
+        errorMessage: null,
+      },
+      delta: z.object({
+        status: z
+          .enum(["pending", "thinking", "delegating", "starting", "complete", "error"])
+          .optional(),
+        projectName: z.string().nullable().optional(),
+        sessionId: z.string().nullable().optional(),
+        errorMessage: z.string().nullable().optional(),
+      }),
     }),
   },
 

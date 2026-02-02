@@ -8,12 +8,16 @@ import { tv } from "tailwind-variants";
 import { useProjects, useSessions, useCreateSession, useSessionCreation } from "@/lib/hooks";
 import { prefetchSessionMessages } from "@/lib/use-agent";
 import { prefetchSessionContainers } from "@/lib/api";
+import { useMultiplayer } from "@/lib/multiplayer";
+import { useSessionStatus } from "@/lib/use-session-status";
+import { useSessionsSync } from "@/lib/use-sessions-sync";
 import { StatusIcon } from "./status-icon";
 import { Hash } from "./hash";
 import { IconButton } from "./icon-button";
+import { ProjectNavigator } from "./project-navigator-list";
 
 const row = tv({
-  base: "flex items-center gap-3 py-2",
+  base: "flex items-center gap-2 py-2",
   variants: {
     type: {
       project: "text-text-secondary cursor-default",
@@ -44,7 +48,7 @@ function SessionListProject({ project, children }: { project: Project; children?
     <div>
       <div className={row({ type: "project" })}>
         <Box size={14} className="shrink-0" />
-        <span className="font-medium">{project.name}</span>
+        <span className="font-medium text-nowrap">{project.name}</span>
         <span className="text-text-muted text-sm">{sessionCount}</span>
         <IconButton
           onClick={handleAddSession}
@@ -66,6 +70,9 @@ function SessionListProject({ project, children }: { project: Project; children?
 
 function SessionListItem({ session }: { session: Session }) {
   const router = useRouter();
+  const { useChannel } = useMultiplayer();
+  const metadata = useChannel("sessionMetadata", { uuid: session.id });
+  const status = useSessionStatus(session);
 
   const handleMouseDown = () => {
     prefetchSessionMessages(session.id);
@@ -78,13 +85,18 @@ function SessionListItem({ session }: { session: Session }) {
 
   return (
     <div onMouseDown={handleMouseDown} onClick={handleClick} className={row({ type: "session" })}>
-      <StatusIcon status={session.status} />
-      <Hash>{session.id.slice(0, 6)}</Hash>
-      {session.title ? (
-        <span className="text-text truncate">{session.title}</span>
-      ) : (
-        <span className="text-text-muted italic truncate">Unnamed Session</span>
-      )}
+      <div className="max-w-1/2 flex items-center gap-2">
+        <div className="flex items-center gap-2 shrink-0">
+          <StatusIcon status={status} />
+          <Hash>{session.id.slice(0, 6)}</Hash>
+        </div>
+        <ProjectNavigator.ItemTitle empty={!session.title}>
+          {session.title}
+        </ProjectNavigator.ItemTitle>
+      </div>
+      <div className="overflow-hidden flex grow justify-end">
+        <ProjectNavigator.ItemDescription>{metadata.lastMessage}</ProjectNavigator.ItemDescription>
+      </div>
     </div>
   );
 }
@@ -99,6 +111,8 @@ function SessionListLoading() {
 
 function SessionListView() {
   const { data: projects, isLoading } = useProjects();
+
+  useSessionsSync();
 
   if (isLoading) {
     return <SessionListLoading />;

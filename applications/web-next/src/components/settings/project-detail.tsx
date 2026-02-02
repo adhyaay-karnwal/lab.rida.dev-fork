@@ -105,6 +105,13 @@ export function ProjectDetail({ projectId }: ProjectDetailProps) {
           <FormInput.Text value={project.name} readOnly />
         </SettingsFormField>
 
+        {project.description && (
+          <SettingsFormField>
+            <FormInput.Label>Description</FormInput.Label>
+            <FormInput.Text value={project.description} readOnly />
+          </SettingsFormField>
+        )}
+
         {project.systemPrompt && (
           <SettingsFormField>
             <FormInput.Label>System Prompt</FormInput.Label>

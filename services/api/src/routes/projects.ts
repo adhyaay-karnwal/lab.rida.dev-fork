@@ -14,6 +14,7 @@ const POST: RouteHandler = async (request) => {
   const body = await request.json();
   const project = await createProject({
     name: body.name,
+    description: body.description,
     systemPrompt: body.systemPrompt,
   });
 
