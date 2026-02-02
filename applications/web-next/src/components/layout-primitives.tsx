@@ -2,7 +2,7 @@ import type { ReactNode } from "react";
 import { tv, type VariantProps } from "tailwind-variants";
 
 const pageFrame = tv({
-  base: "flex flex-col h-full",
+  base: "flex flex-col h-full min-w-0",
   variants: {
     overflow: {
       hidden: "overflow-hidden",

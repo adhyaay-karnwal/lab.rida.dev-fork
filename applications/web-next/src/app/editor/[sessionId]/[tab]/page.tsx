@@ -109,7 +109,7 @@ function SessionInfoPanel() {
   }
 
   return (
-    <div className="min-w-64 shrink-0 bg-bg z-20">
+    <div className="min-w-64 bg-bg z-20">
       <SessionInfoView
         session={session}
         project={project}
@@ -130,8 +130,8 @@ export default function TabPage({ params }: TabPageProps) {
   const currentTab = validTabs.includes(tab as TabValue) ? (tab as TabValue) : "chat";
 
   return (
-    <div className="h-full flex">
-      <div className="border-r border-border grow min-w-0">
+    <div className="h-full grid grid-cols-[2fr_1fr]">
+      <div className="border-r border-border min-w-0 min-h-0">
         <PageFrame position="relative">
           <SessionHeader />
           <SessionTabs />

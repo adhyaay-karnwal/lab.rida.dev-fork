@@ -37,18 +37,19 @@ export function SessionInfoView({ session, project, containers, onDelete }: Sess
     <SessionInfoPane.Root>
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Changed Files</SessionInfoPane.SectionHeader>
-        {changedFiles.length > 0 ? (
-          changedFiles.map((file) => (
+        <SessionInfoPane.ItemList
+          items={changedFiles}
+          emptyMessage="No changed files"
+          scrollable
+          renderItem={(file) => (
             <SessionInfoPane.FileItem
               key={file.path}
               path={file.path}
               status={file.status}
               onClick={() => handleFileClick(file.path)}
             />
-          ))
-        ) : (
-          <SessionInfoPane.Empty>No changed files</SessionInfoPane.Empty>
-        )}
+          )}
+        />
       </SessionInfoPane.Section>
 
       <SessionInfoPane.Section>
@@ -86,11 +87,11 @@ export function SessionInfoView({ session, project, containers, onDelete }: Sess
 
       <SessionInfoPane.Section>
         <SessionInfoPane.SectionHeader>Links</SessionInfoPane.SectionHeader>
-        {links.length > 0 ? (
-          links.map((url) => <SessionInfoPane.LinkItem key={url} href={url} />)
-        ) : (
-          <SessionInfoPane.Empty>No links</SessionInfoPane.Empty>
-        )}
+        <SessionInfoPane.ItemList
+          items={links}
+          emptyMessage="No links"
+          renderItem={(url) => <SessionInfoPane.LinkItem key={url} href={url} />}
+        />
       </SessionInfoPane.Section>
 
       <SessionInfoPane.Stream>

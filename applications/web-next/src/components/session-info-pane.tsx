@@ -40,9 +40,8 @@ const row = tv({
 
 function SessionInfoPaneRoot({ children }: { children?: ReactNode }) {
   return (
-    <div className="flex flex-col gap-px bg-border h-full overflow-y-auto overflow-x-hidden min-w-0">
+    <div className="flex flex-col gap-px bg-border overflow-y-auto overflow-x-hidden min-w-0 h-fit">
       {children}
-      <div className="bg-bg grow" />
     </div>
   );
 }
@@ -51,12 +50,49 @@ function SessionInfoPaneSection({ children }: { children: ReactNode }) {
   return <div className="flex flex-col gap-1 bg-bg px-3 py-2 min-w-0">{children}</div>;
 }
 
+function SessionInfoPaneScrollableContent({ children }: { children: ReactNode }) {
+  return <div className="flex flex-col gap-1 max-h-32 overflow-y-auto min-w-0">{children}</div>;
+}
+
 function SessionInfoPaneSectionHeader({ children }: { children: ReactNode }) {
   return <div className={text({ color: "secondary" })}>{children}</div>;
 }
 
 function SessionInfoPaneEmpty({ children }: { children: ReactNode }) {
   return <div className={text({ color: "muted" })}>{children}</div>;
+}
+
+function SessionInfoPaneItemList<T>({
+  items,
+  renderItem,
+  emptyMessage,
+  scrollable = false,
+}: {
+  items: T[];
+  renderItem: (item: T, index: number) => ReactNode;
+  emptyMessage: string;
+  scrollable?: boolean;
+}) {
+  if (items.length === 0) {
+    return <SessionInfoPaneEmpty>{emptyMessage}</SessionInfoPaneEmpty>;
+  }
+
+  const content = items.map(renderItem);
+
+  if (scrollable) {
+    return <SessionInfoPaneScrollableContent>{content}</SessionInfoPaneScrollableContent>;
+  }
+
+  return <>{content}</>;
+}
+
+function splitPath(path: string): { directory: string; filename: string } {
+  const lastSlash = path.lastIndexOf("/");
+  if (lastSlash === -1) return { directory: "", filename: path };
+  return {
+    directory: path.slice(0, lastSlash + 1),
+    filename: path.slice(lastSlash + 1),
+  };
 }
 
 function SessionInfoPaneFileItem({
@@ -74,16 +110,23 @@ function SessionInfoPaneFileItem({
     deleted: "error",
   } as const;
 
+  const { directory, filename } = splitPath(path);
+
   return (
     <button
       type="button"
       onClick={onClick}
-      className={row({ interactive: true, className: "w-full text-left" })}
+      className={row({ interactive: true, className: "w-full min-w-0 text-left" })}
     >
-      <FileText size={12} className={text({ color: "muted" })} />
-      <span className="flex-1 truncate">{path}</span>
+      <FileText size={12} className={cn(text({ color: "muted" }), "shrink-0")} />
+      <span className="flex min-w-0 flex-1">
+        <span className={cn(text({ color: "muted" }), "truncate")}>{directory}</span>
+        <span className="shrink-0">{filename}</span>
+      </span>
       {status && (
-        <span className={text({ color: statusColor[status] })}>{status[0].toUpperCase()}</span>
+        <span className={cn(text({ color: statusColor[status] }), "shrink-0")}>
+          {status[0].toUpperCase()}
+        </span>
       )}
     </button>
   );
@@ -241,8 +284,10 @@ function SessionInfoPaneActionButton({
 const SessionInfoPane = {
   Root: SessionInfoPaneRoot,
   Section: SessionInfoPaneSection,
+  ScrollableContent: SessionInfoPaneScrollableContent,
   SectionHeader: SessionInfoPaneSectionHeader,
   Empty: SessionInfoPaneEmpty,
+  ItemList: SessionInfoPaneItemList,
   FileItem: SessionInfoPaneFileItem,
   BranchItem: SessionInfoPaneBranchItem,
   ContainerItem: SessionInfoPaneContainerItem,
