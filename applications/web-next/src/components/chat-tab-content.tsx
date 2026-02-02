@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { Chat, useChat } from "@/components/chat";
 import { TextAreaGroup } from "@/components/textarea-group";
 import { MessagePart } from "@/components/message-part";
@@ -14,6 +14,7 @@ type ChatTabContentProps = {
 export function ChatTabContent({ messages }: ChatTabContentProps) {
   const { data: modelGroups } = useModels();
   const { state, actions } = useChat();
+  const isStreamingRef = useRef(false);
 
   useEffect(() => {
     if (modelGroups && !state.modelId) {
@@ -21,6 +22,18 @@ export function ChatTabContent({ messages }: ChatTabContentProps) {
       if (firstModel) actions.setModelId(firstModel.value);
     }
   }, [modelGroups, state.modelId, actions]);
+
+  const lastMessage = messages[messages.length - 1];
+  const isStreaming = lastMessage?.role === "assistant";
+
+  useEffect(() => {
+    if (isStreaming) {
+      isStreamingRef.current = true;
+      actions.scrollToBottom();
+    } else if (isStreamingRef.current) {
+      isStreamingRef.current = false;
+    }
+  }, [isStreaming, lastMessage?.parts.length, actions]);
 
   return (
     <Chat.MessageList>

@@ -1,6 +1,14 @@
 "use client";
 
-import { createContext, use, useState, type ReactNode } from "react";
+import {
+  createContext,
+  use,
+  useState,
+  useRef,
+  useCallback,
+  type ReactNode,
+  type RefObject,
+} from "react";
 import { tv } from "tailwind-variants";
 import { TextAreaGroup } from "./textarea-group";
 import { Tabs, useTabs } from "./tabs";
@@ -22,11 +30,14 @@ type ChatActions = {
   setInput: (value: string) => void;
   setModelId: (value: string) => void;
   onSubmit: () => void;
+  scrollToBottom: (force?: boolean) => void;
 };
 
 type ChatContextValue = {
   state: ChatState;
   actions: ChatActions;
+  scrollRef: RefObject<HTMLDivElement | null>;
+  isNearBottomRef: RefObject<boolean>;
 };
 
 const ChatContext = createContext<ChatContextValue | null>(null);
@@ -39,6 +50,8 @@ function useChat() {
   return context;
 }
 
+const SCROLL_THRESHOLD = 100;
+
 function ChatProvider({
   children,
   defaultModelId,
@@ -50,18 +63,32 @@ function ChatProvider({
 }) {
   const [input, setInput] = useState("");
   const [modelId, setModelId] = useState(defaultModelId ?? null);
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+  const isNearBottomRef = useRef(true);
+
+  const scrollToBottom = useCallback((force = false) => {
+    if (!force && !isNearBottomRef.current) return;
+    scrollRef.current?.scrollTo({
+      top: scrollRef.current.scrollHeight,
+      behavior: "smooth",
+    });
+  }, []);
 
   const handleSubmit = () => {
     if (!input.trim()) return;
     onSubmit?.({ content: input, modelId: modelId ?? undefined });
     setInput("");
+    isNearBottomRef.current = true;
+    setTimeout(() => scrollToBottom(true), 0);
   };
 
   return (
     <ChatContext
       value={{
         state: { input, modelId },
-        actions: { setInput, setModelId, onSubmit: handleSubmit },
+        actions: { setInput, setModelId, onSubmit: handleSubmit, scrollToBottom },
+        scrollRef,
+        isNearBottomRef,
       }}
     >
       {children}
@@ -120,7 +147,26 @@ function ChatTabContent({ value, children }: { value: ChatTab; children: ReactNo
 }
 
 function ChatMessageList({ children }: { children: ReactNode }) {
-  return <div className="flex-1 overflow-y-auto flex flex-col justify-between">{children}</div>;
+  const { scrollRef, isNearBottomRef } = useChat();
+
+  const handleScroll = useCallback(() => {
+    const { current: element } = scrollRef;
+    if (!element) return;
+    const { scrollHeight, scrollTop, clientHeight } = element;
+    const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
+
+    isNearBottomRef.current = distanceFromBottom < SCROLL_THRESHOLD;
+  }, [scrollRef, isNearBottomRef]);
+
+  return (
+    <div
+      ref={scrollRef}
+      onScroll={handleScroll}
+      className="flex-1 overflow-y-auto flex flex-col justify-between"
+    >
+      {children}
+    </div>
+  );
 }
 
 function ChatMessages({ children }: { children: ReactNode }) {
