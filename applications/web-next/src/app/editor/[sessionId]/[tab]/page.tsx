@@ -1,6 +1,6 @@
 "use client";
 
-import { use, useEffect } from "react";
+import { use } from "react";
 import { useRouter } from "next/navigation";
 import { Chat } from "@/components/chat";
 import { StatusIcon } from "@/components/status-icon";
@@ -12,7 +12,7 @@ import { FrameTabContent } from "@/components/frame-tab-content";
 import { StreamTabContent } from "@/components/stream-tab-content";
 import { SessionInfoView } from "@/components/session-info-view";
 import { PageFrame, Header, PageContent } from "@/components/layout-primitives";
-import { useAgent, invalidateSessionCache } from "@/lib/use-agent";
+import { useAgent } from "@/lib/use-agent";
 import { useQuestions } from "@/lib/use-questions";
 import { useDeleteSession } from "@/lib/hooks";
 import { useSessionStatus } from "@/lib/use-session-status";
@@ -57,11 +57,6 @@ function SessionTabs() {
 
 function TabContent({ tab }: { tab: TabValue }) {
   const { sessionId, containerUrls } = useSessionContext();
-
-  useEffect(() => {
-    invalidateSessionCache(sessionId);
-  }, [sessionId]);
-
   const { messages, sendMessage, abortSession, sessionStatus } = useAgent(sessionId);
   const {
     reply: replyToQuestion,

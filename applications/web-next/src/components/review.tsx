@@ -80,6 +80,7 @@ type BrowserActions = {
   toggleDirectory: (path: string) => void;
   selectFile: (path: string) => void;
   clearFileSelection: () => void;
+  expandToFile: (path: string) => Promise<void>;
 };
 
 type ReviewState = {
@@ -184,6 +185,7 @@ function ReviewProvider({ children, files, onDismiss, onSubmitFeedback, browser 
     toggleDirectory: () => {},
     selectFile: () => {},
     clearFileSelection: () => {},
+    expandToFile: async () => {},
   };
 
   const view = browser?.state.selectedPath ? "preview" : "diff";

@@ -6,9 +6,7 @@ import type { Session } from "@lab/client";
 import { useMultiplayer } from "@/lib/multiplayer";
 import { useSessionStatus, type SessionStatus } from "@/lib/use-session-status";
 import { useSessionTitle } from "@/lib/use-session-title";
-import { prefetchSessionMessages } from "@/lib/use-agent";
 import { prefetchSessionContainers } from "@/lib/api";
-import { prefetchFileStatuses } from "@/lib/use-file-statuses";
 import { StatusIcon } from "./status-icon";
 import { Hash } from "./hash";
 import { ProjectNavigator } from "./project-navigator-list";
@@ -44,9 +42,7 @@ function SessionItemProvider({ session, children }: ProviderProps) {
   const title = useSessionTitle(session.id, session.title);
 
   const prefetch = () => {
-    prefetchSessionMessages(session.id);
     prefetchSessionContainers(session.id);
-    prefetchFileStatuses(session.id);
   };
 
   return (

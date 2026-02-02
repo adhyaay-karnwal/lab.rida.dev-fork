@@ -1,12 +1,9 @@
 "use client";
 
-import { useState, useEffect, useCallback, useMemo } from "react";
-import {
-  createOpencodeClient,
-  type FileContent,
-  type File as SdkFile,
-} from "@opencode-ai/sdk/v2/client";
-import { useOpenCodeSession } from "./opencode-session";
+import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import useSWR from "swr";
+import { createOpencodeClient, type FileContent } from "@opencode-ai/sdk/v2/client";
+import { useFileStatuses, type ChangedFile } from "./use-file-statuses";
 import type { BrowserState, BrowserActions, FileNode, FileStatus } from "@/components/review";
 
 function getApiUrl(): string {
@@ -24,25 +21,6 @@ function createSessionClient(labSessionId: string) {
 
 type Patch = NonNullable<FileContent["patch"]>;
 
-function toFileStatus(status: SdkFile["status"]): FileStatus {
-  return status;
-}
-
-function normalizePath(path: string): string {
-  const segments = path.split("/");
-  const result: string[] = [];
-
-  for (const segment of segments) {
-    if (segment === "..") {
-      result.pop();
-    } else if (segment !== "." && segment !== "") {
-      result.push(segment);
-    }
-  }
-
-  return result.join("/");
-}
-
 function getParentPaths(filePath: string): string[] {
   const segments = filePath.split("/");
   const parents: string[] = [];
@@ -54,117 +32,81 @@ function getParentPaths(filePath: string): string[] {
   return parents;
 }
 
+function buildStatusMaps(files: ChangedFile[]): {
+  statuses: Map<string, FileStatus>;
+  dirsWithChanges: Set<string>;
+} {
+  const statuses = new Map<string, FileStatus>();
+  const dirsWithChanges = new Set<string>();
+
+  for (const file of files) {
+    statuses.set(file.path, file.status);
+    for (const parentPath of getParentPaths(file.path)) {
+      dirsWithChanges.add(parentPath);
+    }
+  }
+
+  return { statuses, dirsWithChanges };
+}
+
+async function fetchRootFiles(sessionId: string): Promise<FileNode[]> {
+  const client = createSessionClient(sessionId);
+  const response = await client.file.list({ path: "." });
+
+  if (response.data) {
+    return response.data.map((node) => ({
+      name: node.name,
+      path: node.path,
+      type: node.type,
+      ignored: node.ignored,
+    }));
+  }
+
+  return [];
+}
+
 export function useFileBrowser(sessionId: string | null): {
   state: BrowserState;
   actions: BrowserActions;
 } {
-  const { subscribe } = useOpenCodeSession();
+  const { files: changedFiles, isLoading: statusesLoading } = useFileStatuses(sessionId);
 
-  const [rootNodes, setRootNodes] = useState<FileNode[]>([]);
   const [expandedPaths, setExpandedPaths] = useState<Set<string>>(new Set());
   const [loadedContents, setLoadedContents] = useState<Map<string, FileNode[]>>(new Map());
   const [loadingPaths, setLoadingPaths] = useState<Set<string>>(new Set());
-  const [rootLoading, setRootLoading] = useState(false);
   const [selectedPath, setSelectedPath] = useState<string | null>(null);
   const [previewContent, setPreviewContent] = useState<string | null>(null);
   const [previewPatch, setPreviewPatch] = useState<Patch | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
-  const [fileStatuses, setFileStatuses] = useState<Map<string, FileStatus>>(new Map());
-  const [directoriesWithChanges, setDirectoriesWithChanges] = useState<Set<string>>(new Set());
 
   const client = useMemo(() => {
     if (!sessionId) return null;
     return createSessionClient(sessionId);
   }, [sessionId]);
 
+  const { data: rootNodes, isLoading: rootLoading } = useSWR<FileNode[]>(
+    sessionId ? `file-browser-root-${sessionId}` : null,
+    () => fetchRootFiles(sessionId!),
+  );
+
+  const { statuses: fileStatuses, dirsWithChanges: directoriesWithChanges } = useMemo(
+    () => buildStatusMaps(changedFiles),
+    [changedFiles],
+  );
+
+  const initializedSessionRef = useRef<string | null>(null);
+
   useEffect(() => {
-    setRootNodes([]);
+    if (initializedSessionRef.current === sessionId) return;
+    initializedSessionRef.current = sessionId;
+
     setExpandedPaths(new Set());
     setLoadedContents(new Map());
     setLoadingPaths(new Set());
     setSelectedPath(null);
     setPreviewContent(null);
     setPreviewPatch(null);
-    setFileStatuses(new Map());
-    setDirectoriesWithChanges(new Set());
   }, [sessionId]);
-
-  const fetchFileStatuses = useCallback(async () => {
-    if (!client) return;
-
-    try {
-      const response = await client.file.status({});
-
-      if (response.data) {
-        const statuses = new Map<string, FileStatus>();
-        const dirsWithChanges = new Set<string>();
-
-        for (const file of response.data) {
-          const normalizedPath = normalizePath(file.path);
-          statuses.set(normalizedPath, toFileStatus(file.status));
-
-          for (const parentPath of getParentPaths(normalizedPath)) {
-            dirsWithChanges.add(parentPath);
-          }
-        }
-
-        setFileStatuses(statuses);
-        setDirectoriesWithChanges(dirsWithChanges);
-      }
-    } catch (error) {
-      console.error("Failed to fetch file statuses:", error);
-    }
-  }, [client]);
-
-  useEffect(() => {
-    if (!client) return;
-
-    let cancelled = false;
-
-    const fetchRoot = async () => {
-      setRootLoading(true);
-      try {
-        const response = await client.file.list({
-          path: ".",
-        });
-
-        if (cancelled) return;
-
-        if (response.data) {
-          const nodes: FileNode[] = response.data.map((node) => ({
-            name: node.name,
-            path: node.path,
-            type: node.type,
-            ignored: node.ignored,
-          }));
-          setRootNodes(nodes);
-        }
-      } catch (error) {
-        console.error("Failed to fetch root files:", error);
-      } finally {
-        if (!cancelled) {
-          setRootLoading(false);
-        }
-      }
-    };
-
-    fetchRoot();
-    fetchFileStatuses();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [client, fetchFileStatuses]);
-
-  useEffect(() => {
-    const handleEvent = (event: { type: string }) => {
-      if (event.type === "file.watcher.updated" || event.type === "file.edited") {
-        fetchFileStatuses();
-      }
-    };
-
-    return subscribe(handleEvent);
-  }, [subscribe, fetchFileStatuses]);
 
   const toggleDirectory = useCallback(
     async (path: string) => {
@@ -181,9 +123,7 @@ export function useFileBrowser(sessionId: string | null): {
         setLoadingPaths((prev) => new Set([...prev, path]));
 
         try {
-          const response = await client.file.list({
-            path,
-          });
+          const response = await client.file.list({ path });
 
           if (response.data) {
             const nodes: FileNode[] = response.data.map((node) => ({
@@ -220,19 +160,14 @@ export function useFileBrowser(sessionId: string | null): {
       setPreviewPatch(null);
 
       try {
-        const response = await client.file.read({
-          path,
-        });
+        const response = await client.file.read({ path });
 
-        if (response.data && response.data.type === "text") {
-          setPreviewContent(response.data.content);
-          setPreviewPatch(response.data.patch ?? null);
-        } else {
-          setPreviewContent("// Unable to read file");
-        }
+        if (!response.data || response.data.type !== "text") return;
+
+        setPreviewContent(response.data.content);
+        setPreviewPatch(response.data.patch ?? null);
       } catch (error) {
         console.error("Failed to read file:", error);
-        setPreviewContent("// Failed to load file");
       } finally {
         setPreviewLoading(false);
       }
@@ -246,12 +181,43 @@ export function useFileBrowser(sessionId: string | null): {
     setPreviewPatch(null);
   }, []);
 
+  const loadDirectoryContents = useCallback(
+    async (dirPath: string) => {
+      if (!client || loadedContents.has(dirPath)) return;
+
+      try {
+        const response = await client.file.list({ path: dirPath });
+        if (response.data) {
+          const nodes: FileNode[] = response.data.map((node) => ({
+            name: node.name,
+            path: node.path,
+            type: node.type,
+            ignored: node.ignored,
+          }));
+          setLoadedContents((prev) => new Map(prev).set(dirPath, nodes));
+        }
+      } catch (error) {
+        console.error("Failed to fetch directory contents:", error);
+      }
+    },
+    [client, loadedContents],
+  );
+
+  const expandToFile = useCallback(
+    async (filePath: string) => {
+      const parents = getParentPaths(filePath);
+      await Promise.all(parents.map(loadDirectoryContents));
+      setExpandedPaths(new Set(parents));
+    },
+    [loadDirectoryContents],
+  );
+
   const state: BrowserState = {
-    rootNodes,
+    rootNodes: rootNodes ?? [],
     expandedPaths,
     loadedContents,
     loadingPaths,
-    rootLoading,
+    rootLoading: rootLoading || statusesLoading,
     selectedPath,
     previewContent,
     previewPatch,
@@ -264,6 +230,7 @@ export function useFileBrowser(sessionId: string | null): {
     toggleDirectory,
     selectFile,
     clearFileSelection,
+    expandToFile,
   };
 
   return { state, actions };

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRouter } from "next/navigation";
+import { useRouter, usePathname } from "next/navigation";
 import { Trash2 } from "lucide-react";
 import { SessionInfoPane } from "@/components/session-info-pane";
 import { BrowserStreamView } from "@/components/browser-stream";
@@ -23,14 +23,20 @@ type SessionInfoViewProps = {
 
 export function SessionInfoView({ session, project, containers, onDelete }: SessionInfoViewProps) {
   const router = useRouter();
-  const changedFiles = useFileStatuses(session.id);
+  const pathname = usePathname();
+  const { files: changedFiles } = useFileStatuses(session.id);
   const links = containers.flatMap((container) => container.urls.map(({ url }) => url));
 
   const projectContainers = project.containers ?? [];
   const hasSessionContainers = containers.length > 0;
+  const isOnReviewTab = pathname?.endsWith("/review");
 
   const handleFileClick = (path: string) => {
-    router.push(`/editor/${session.id}/review?file=${encodeURIComponent(path)}`);
+    const params = new URLSearchParams({ file: path });
+    if (!isOnReviewTab) {
+      params.set("expand", "true");
+    }
+    router.push(`/editor/${session.id}/review?${params.toString()}`);
   };
 
   return (

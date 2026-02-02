@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo, useRef } from "react";
+import useSWR, { useSWRConfig } from "swr";
 import { createOpencodeClient, type Message, type Part } from "@opencode-ai/sdk/v2/client";
 import { api } from "./api";
 import { useOpenCodeSession, type Event } from "./opencode-session";
@@ -37,16 +38,10 @@ interface UseAgentResult {
   sessionStatus: SessionStatus;
 }
 
-export interface CachedSessionData {
+interface SessionData {
   opencodeSessionId: string;
   messages: MessageState[];
-  timestamp: number;
 }
-
-const CACHE_TTL = 5 * 60 * 1000;
-
-const sessionCache = new Map<string, CachedSessionData>();
-const pendingPrefetches = new Map<string, Promise<CachedSessionData | null>>();
 
 function getApiUrl(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;
@@ -107,59 +102,42 @@ function upsertPart(parts: Part[], part: Part): Part[] {
   return parts.map((existing, index) => (index === existingIndex ? part : existing));
 }
 
-async function fetchSessionMessages(labSessionId: string): Promise<CachedSessionData | null> {
+async function fetchSessionData(labSessionId: string): Promise<SessionData | null> {
   const labSession = await api.sessions.get(labSessionId);
-  if (!labSession.opencodeSessionId) return null;
-
   const client = createSessionClient(labSessionId);
+
+  let opencodeSessionId = labSession.opencodeSessionId;
+
+  if (!opencodeSessionId) {
+    const response = await client.session.create({});
+    if (response.error || !response.data) {
+      throw new Error("Failed to create OpenCode session");
+    }
+    opencodeSessionId = response.data.id;
+  }
+
   const messagesResponse = await client.session.messages({
-    sessionID: labSession.opencodeSessionId,
+    sessionID: opencodeSessionId,
   });
 
   if (messagesResponse.error) {
-    console.error("[fetchSessionMessages] Error:", messagesResponse.error);
-    return null;
+    throw new Error(`Failed to fetch messages: ${JSON.stringify(messagesResponse.error)}`);
   }
 
-  if (!messagesResponse.data) return null;
-
   return {
-    opencodeSessionId: labSession.opencodeSessionId,
-    messages: parseLoadedMessages(messagesResponse.data),
-    timestamp: Date.now(),
+    opencodeSessionId,
+    messages: parseLoadedMessages(messagesResponse.data ?? []),
   };
 }
 
-export async function prefetchSessionMessages(labSessionId: string): Promise<void> {
-  const cached = sessionCache.get(labSessionId);
-  if (cached && Date.now() - cached.timestamp < CACHE_TTL) return;
-  if (pendingPrefetches.has(labSessionId)) return;
-
-  const prefetchPromise = (async (): Promise<CachedSessionData | null> => {
-    try {
-      const data = await fetchSessionMessages(labSessionId);
-      if (data) sessionCache.set(labSessionId, { ...data, timestamp: Date.now() });
-      return data;
-    } catch {
-      return null;
-    } finally {
-      pendingPrefetches.delete(labSessionId);
-    }
-  })();
-
-  pendingPrefetches.set(labSessionId, prefetchPromise);
-}
-
-export function invalidateSessionCache(labSessionId: string): void {
-  sessionCache.delete(labSessionId);
-  pendingPrefetches.delete(labSessionId);
+function getAgentMessagesKey(labSessionId: string): string {
+  return `agent-messages-${labSessionId}`;
 }
 
 export function useAgent(labSessionId: string): UseAgentResult {
   const { subscribe } = useOpenCodeSession();
-  const [opencodeSessionId, setOpencodeSessionId] = useState<string | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
-  const [messages, setMessages] = useState<MessageState[]>([]);
+  const { mutate } = useSWRConfig();
+  const [streamedMessages, setStreamedMessages] = useState<MessageState[] | null>(null);
   const [error, setError] = useState<Error | null>(null);
   const [isSending, setIsSending] = useState(false);
   const [sessionStatus, setSessionStatus] = useState<SessionStatus>({ type: "idle" });
@@ -171,130 +149,59 @@ export function useAgent(labSessionId: string): UseAgentResult {
     return createSessionClient(labSessionId);
   }, [labSessionId]);
 
+  const {
+    data: sessionData,
+    error: swrError,
+    isLoading,
+  } = useSWR<SessionData | null>(labSessionId ? getAgentMessagesKey(labSessionId) : null, () =>
+    fetchSessionData(labSessionId),
+  );
+
   useEffect(() => {
-    const cached = sessionCache.get(labSessionId);
-    if (cached && Date.now() - cached.timestamp < CACHE_TTL) {
-      setMessages(cached.messages);
-      setOpencodeSessionId(cached.opencodeSessionId);
-      currentOpencodeSessionRef.current = cached.opencodeSessionId;
-      setIsLoading(false);
-      return;
+    if (sessionData?.opencodeSessionId) {
+      currentOpencodeSessionRef.current = sessionData.opencodeSessionId;
     }
+  }, [sessionData?.opencodeSessionId]);
 
-    setOpencodeSessionId(null);
-    currentOpencodeSessionRef.current = null;
-
-    if (!labSessionId || !opencodeClient) {
-      setIsLoading(false);
-      return;
+  useEffect(() => {
+    if (swrError) {
+      setError(swrError instanceof Error ? swrError : new Error("Failed to initialize"));
     }
+  }, [swrError]);
 
-    let cancelled = false;
-
-    const applySessionData = (sessionId: string, sessionMessages: MessageState[]) => {
-      setMessages(sessionMessages);
-      setOpencodeSessionId(sessionId);
-      currentOpencodeSessionRef.current = sessionId;
-      sessionCache.set(labSessionId, {
-        opencodeSessionId: sessionId,
-        messages: sessionMessages,
-        timestamp: Date.now(),
-      });
-      setIsLoading(false);
-    };
-
-    const getOrCreateOpencodeSession = async (): Promise<string> => {
-      const labSession = await api.sessions.get(labSessionId);
-      if (labSession.opencodeSessionId) return labSession.opencodeSessionId;
-
-      const response = await opencodeClient.session.create({});
-      if (response.error || !response.data) {
-        throw new Error("Failed to create OpenCode session");
-      }
-
-      return response.data.id;
-    };
-
-    const initialize = async () => {
-      setIsLoading(true);
-      setError(null);
-
-      try {
-        const pending = pendingPrefetches.get(labSessionId);
-        if (pending) {
-          const prefetched = await pending;
-          if (cancelled) return;
-          if (prefetched) {
-            applySessionData(prefetched.opencodeSessionId, prefetched.messages);
-            return;
-          }
-        }
-
-        const sessionId = await getOrCreateOpencodeSession();
-        if (cancelled) return;
-
-        console.log("[useAgent] Fetching messages for session:", sessionId);
-        const messagesResponse = await opencodeClient.session.messages({
-          sessionID: sessionId,
-        });
-        console.log("[useAgent] Messages response:", {
-          hasData: !!messagesResponse.data,
-          dataLength: messagesResponse.data?.length,
-          hasError: !!messagesResponse.error,
-          error: messagesResponse.error,
-        });
-        if (cancelled) return;
-
-        if (messagesResponse.error) {
-          throw new Error(`Failed to fetch messages: ${JSON.stringify(messagesResponse.error)}`);
-        }
-
-        const loadedMessages = parseLoadedMessages(messagesResponse.data ?? []);
-        applySessionData(sessionId, loadedMessages);
-      } catch (error) {
-        if (cancelled) return;
-        setError(error instanceof Error ? error : new Error("Failed to initialize"));
-        setIsLoading(false);
-      }
-    };
-
-    initialize();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [labSessionId, opencodeClient]);
+  const messages = streamedMessages ?? sessionData?.messages ?? [];
+  const opencodeSessionId = sessionData?.opencodeSessionId ?? null;
 
   useEffect(() => {
     if (!opencodeSessionId) return;
 
     const handleMessageUpdated = (info: Message) => {
-      setMessages((previous) => {
-        const existing = previous.find((message) => message.id === info.id);
-        if (existing) return previous;
-        return [...previous, { id: info.id, role: info.role, parts: [] }];
+      setStreamedMessages((previous) => {
+        const base = previous ?? sessionData?.messages ?? [];
+        const existing = base.find((message) => message.id === info.id);
+        if (existing) return base;
+        return [...base, { id: info.id, role: info.role, parts: [] }];
       });
     };
 
     const handleMessagePartUpdated = (part: Part) => {
-      setMessages((previous) =>
-        previous.map((message) => {
+      setStreamedMessages((previous) => {
+        const base = previous ?? sessionData?.messages ?? [];
+        return base.map((message) => {
           if (message.id !== part.messageID) return message;
           return { ...message, parts: sortPartsById(upsertPart(message.parts, part)) };
-        }),
-      );
+        });
+      });
     };
 
     const processEvent = (event: Event) => {
-      // Only log non-heartbeat events to reduce noise
-      if (event.type !== "server.heartbeat") {
+      if ((event.type as string) !== "server.heartbeat") {
         console.log("[useAgent] Event received:", {
           type: event.type,
           properties: event.properties,
         });
       }
 
-      // Only filter session-specific events
       const sessionSpecificEvents = [
         "message.updated",
         "message.part.updated",
@@ -339,6 +246,13 @@ export function useAgent(labSessionId: string): UseAgentResult {
         }
         setIsSending(false);
         setSessionStatus({ type: "idle" });
+
+        setStreamedMessages((current) => {
+          if (current) {
+            mutate(getAgentMessagesKey(labSessionId), { ...sessionData, messages: current }, false);
+          }
+          return null;
+        });
       }
 
       if (event.type === "session.error") {
@@ -352,7 +266,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
     };
 
     return subscribe(processEvent);
-  }, [subscribe, opencodeSessionId]);
+  }, [subscribe, opencodeSessionId, sessionData, mutate, labSessionId]);
 
   const sendMessage = useCallback(
     async ({ content, modelId }: SendMessageOptions) => {

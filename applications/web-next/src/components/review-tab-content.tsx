@@ -14,14 +14,24 @@ type FileBrowserProviderProps = {
 function FileBrowserProvider({ sessionId, children }: FileBrowserProviderProps) {
   const searchParams = useSearchParams();
   const fileParam = searchParams.get("file");
+  const expandParam = searchParams.get("expand");
   const browser = useFileBrowser(sessionId);
-  const initialFileHandledRef = useRef(false);
+  const handledFileRef = useRef<string | null>(null);
 
   useEffect(() => {
-    if (!fileParam || browser.state.rootLoading || initialFileHandledRef.current) return;
-    initialFileHandledRef.current = true;
-    browser.actions.selectFile(fileParam);
-  }, [fileParam, browser.state.rootLoading, browser.actions]);
+    if (!fileParam || browser.state.rootLoading || handledFileRef.current === fileParam) return;
+
+    handledFileRef.current = fileParam;
+
+    if (expandParam !== "true") {
+      browser.actions.selectFile(fileParam);
+      return;
+    }
+
+    browser.actions.expandToFile(fileParam).then(() => {
+      browser.actions.selectFile(fileParam);
+    });
+  }, [fileParam, expandParam, browser.state.rootLoading, browser.actions]);
 
   return (
     <Review.Provider files={[]} onDismiss={() => {}} browser={browser}>

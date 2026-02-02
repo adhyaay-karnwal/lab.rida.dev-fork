@@ -1,6 +1,7 @@
 "use client";
 
 import { createContext, use, type ReactNode } from "react";
+import { SWRConfig } from "swr";
 import { MultiplayerProvider } from "@/lib/multiplayer";
 
 interface ProvidersProps {
@@ -16,13 +17,26 @@ export function useMultiplayerEnabled() {
 export function Providers({ children }: ProvidersProps) {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
 
+  const swrContent = (
+    <SWRConfig
+      value={{
+        dedupingInterval: 2000,
+        revalidateOnFocus: false,
+        shouldRetryOnError: true,
+        errorRetryCount: 3,
+      }}
+    >
+      {children}
+    </SWRConfig>
+  );
+
   if (!wsUrl) {
-    return <MultiplayerEnabledContext value={false}>{children}</MultiplayerEnabledContext>;
+    return <MultiplayerEnabledContext value={false}>{swrContent}</MultiplayerEnabledContext>;
   }
 
   return (
     <MultiplayerEnabledContext value={true}>
-      <MultiplayerProvider config={{ url: wsUrl }}>{children}</MultiplayerProvider>
+      <MultiplayerProvider config={{ url: wsUrl }}>{swrContent}</MultiplayerProvider>
     </MultiplayerEnabledContext>
   );
 }
