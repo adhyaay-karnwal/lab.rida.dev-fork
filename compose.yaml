@@ -42,6 +42,7 @@ services:
       - ./opencode.json:/root/.config/opencode/opencode.json:ro
       - session_workspaces:/workspaces
       - browser_sockets:/tmp/agent-browser-socket
+      - opencode_data:/root/.opencode
     environment:
       AGENT_BROWSER_SOCKET_DIR: /tmp/agent-browser-socket
       BROWSER_DAEMON_HOST: browser
@@ -124,3 +125,4 @@ volumes:
   session_workspaces:
   browser_sockets:
   browser_profiles:
+  opencode_data:

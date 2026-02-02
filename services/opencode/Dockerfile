@@ -2,7 +2,7 @@ FROM ghcr.io/anomalyco/opencode
 
 USER root
 
-RUN apk add --no-cache nodejs npm gcompat git && \
+RUN apk add --no-cache nodejs npm gcompat git github-cli && \
   npm install -g agent-browser@latest
 
 # Patch daemon.js to prevent spawning local daemons
@@ -24,3 +24,6 @@ if echo "$PWD" | grep -q "^/workspaces/"; then\n\
 fi\n\
 exec agent-browser.real "$@"\n' > "$AGENT_BIN" && \
   chmod +x "$AGENT_BIN"
+
+# Configure git credential helper to use GH_TOKEN environment variable
+RUN git config --system credential.helper '!f() { echo "password=${GH_TOKEN}"; }; f'

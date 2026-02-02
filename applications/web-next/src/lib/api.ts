@@ -27,3 +27,44 @@ export function prefetchSessionContainers(sessionId: string): void {
     .then((data) => mutate(cacheKey, data, false))
     .finally(() => pendingContainerPrefetches.delete(sessionId));
 }
+
+export interface GitHubSettingsInput {
+  pat?: string;
+  username?: string;
+  authorName?: string;
+  authorEmail?: string;
+  attributeAgent?: boolean;
+}
+
+export interface GitHubSettingsResponse {
+  configured: boolean;
+  id?: string;
+  username?: string | null;
+  authorName?: string | null;
+  authorEmail?: string | null;
+  attributeAgent?: boolean;
+  hasPatConfigured?: boolean;
+}
+
+export async function getGitHubSettings(): Promise<GitHubSettingsResponse> {
+  const response = await fetch(`${API_BASE}/github/settings`);
+  if (!response.ok) throw new Error("Failed to fetch GitHub settings");
+  return response.json();
+}
+
+export async function saveGitHubSettings(
+  settings: GitHubSettingsInput,
+): Promise<GitHubSettingsResponse> {
+  const response = await fetch(`${API_BASE}/github/settings`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(settings),
+  });
+  if (!response.ok) throw new Error("Failed to save GitHub settings");
+  return response.json();
+}
+
+export async function deleteGitHubSettings(): Promise<void> {
+  const response = await fetch(`${API_BASE}/github/settings`, { method: "DELETE" });
+  if (!response.ok) throw new Error("Failed to delete GitHub settings");
+}

@@ -50,6 +50,10 @@
     "./schema/platform-chat-mappings": {
       "types": "./src/schema/platform-chat-mappings.ts",
       "default": "./src/schema/platform-chat-mappings.ts"
+    },
+    "./schema/github-settings": {
+      "types": "./src/schema/github-settings.ts",
+      "default": "./src/schema/github-settings.ts"
     }
   },
   "scripts": {
