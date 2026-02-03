@@ -189,9 +189,11 @@ const startWorker = async (config: DaemonWorkerConfig) => {
           if (fs.existsSync(pidFile)) fs.unlinkSync(pidFile);
           if (fs.existsSync(streamPortFile)) fs.unlinkSync(streamPortFile);
           if (fs.existsSync(cdpPortFile)) fs.unlinkSync(cdpPortFile);
-        } catch {}
+        } catch (error) {
+          console.error("Termination error from daemon-worker.ts", error)
+        }
+
         process.exit(0);
-        break;
     }
   };
 };

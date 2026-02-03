@@ -125,6 +125,21 @@ export function killByPidFile(sessionId: string): boolean {
     const pid = parseInt(readFileSync(pidFile, "utf-8").trim(), 10);
     if (isNaN(pid)) return false;
 
+    if (pid === process.pid || pid === process.ppid) {
+      console.warn(
+        `[DaemonProcess] Refusing to kill own process (PID ${pid}) for session ${sessionId}`,
+      );
+      cleanupSocket(sessionId);
+      return false;
+    }
+
+    try {
+      process.kill(pid, 0);
+    } catch {
+      cleanupSocket(sessionId);
+      return false;
+    }
+
     process.kill(pid, "SIGTERM");
     cleanupSocket(sessionId);
     return true;
