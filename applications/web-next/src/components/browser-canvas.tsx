@@ -143,7 +143,9 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
 
 function BrowserCanvasPlaceholder({ children }: { children?: ReactNode }) {
   const { getBitmap, subscribeToFrames, subscribe } = useBrowserStream();
-  const [hasFrame, setHasFrame] = useState(() => getBitmap() !== null);
+  const initialHasFrame = getBitmap() !== null;
+  const [hasFrame, setHasFrame] = useState(initialHasFrame);
+  const hasFrameRef = useRef(initialHasFrame);
 
   useEffect(() => {
     const unsubscribe = subscribe();
@@ -151,15 +153,18 @@ function BrowserCanvasPlaceholder({ children }: { children?: ReactNode }) {
   }, [subscribe]);
 
   useEffect(() => {
-    if (hasFrame) return;
+    if (hasFrameRef.current) return;
 
     const onFrame = () => {
-      setHasFrame(true);
+      if (!hasFrameRef.current) {
+        hasFrameRef.current = true;
+        setHasFrame(true);
+      }
     };
 
     const unsubscribe = subscribeToFrames(onFrame);
     return unsubscribe;
-  }, [subscribeToFrames, hasFrame]);
+  }, [subscribeToFrames]);
 
   if (hasFrame) return null;
 
@@ -182,6 +187,7 @@ function BrowserCanvasView({ className }: { className?: string }) {
   const { subscribe, subscribeToFrames } = useBrowserStream();
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [hasFrame, setHasFrame] = useState(false);
+  const hasFrameRef = useRef(false);
 
   useEffect(() => {
     const unsubscribe = subscribe();
@@ -203,12 +209,15 @@ function BrowserCanvasView({ className }: { className?: string }) {
 
       context.drawImage(bitmap, 0, 0);
 
-      if (!hasFrame) setHasFrame(true);
+      if (!hasFrameRef.current) {
+        hasFrameRef.current = true;
+        setHasFrame(true);
+      }
     };
 
     const unsubscribe = subscribeToFrames(drawFrame);
     return unsubscribe;
-  }, [subscribeToFrames, hasFrame]);
+  }, [subscribeToFrames]);
 
   return (
     <div

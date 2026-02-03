@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, use, type ReactNode } from "react";
+import { createContext, use, useMemo, type ReactNode } from "react";
 import { SWRConfig } from "swr";
 import { MultiplayerProvider } from "@/lib/multiplayer";
 
@@ -8,6 +8,13 @@ interface ProvidersProps {
   children: ReactNode;
   fallback?: Record<string, unknown>;
 }
+
+const SWR_CONFIG = {
+  dedupingInterval: 2000,
+  revalidateOnFocus: false,
+  shouldRetryOnError: true,
+  errorRetryCount: 3,
+} as const;
 
 export const MultiplayerEnabledContext = createContext(false);
 
@@ -18,19 +25,9 @@ export function useMultiplayerEnabled() {
 export function Providers({ children, fallback = {} }: ProvidersProps) {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
 
-  const swrContent = (
-    <SWRConfig
-      value={{
-        fallback,
-        dedupingInterval: 2000,
-        revalidateOnFocus: false,
-        shouldRetryOnError: true,
-        errorRetryCount: 3,
-      }}
-    >
-      {children}
-    </SWRConfig>
-  );
+  const swrValue = useMemo(() => ({ ...SWR_CONFIG, fallback }), [fallback]);
+
+  const swrContent = <SWRConfig value={swrValue}>{children}</SWRConfig>;
 
   if (!wsUrl) {
     return <MultiplayerEnabledContext value={false}>{swrContent}</MultiplayerEnabledContext>;

@@ -38,25 +38,25 @@ export function useInferenceStatus(
   const { subscribe } = useOpenCodeSession();
   const [status, setStatus] = useState<InferenceStatus>("idle");
 
-  const handleEvent = (event: Event): void => {
-    const eventSessionId = getSessionIdFromEvent(event);
-    if (eventSessionId !== opencodeSessionId) return;
-
-    if (event.type === "message.updated" || event.type === "message.part.updated") {
-      setStatus("generating");
-    } else if (event.type === "session.idle") {
-      setStatus("idle");
-    }
-  };
-
   useEffect(() => {
     if (!enabled || !opencodeSessionId) {
       setStatus("idle");
       return;
     }
 
+    const handleEvent = (event: Event): void => {
+      const eventSessionId = getSessionIdFromEvent(event);
+      if (eventSessionId !== opencodeSessionId) return;
+
+      if (event.type === "message.updated" || event.type === "message.part.updated") {
+        setStatus("generating");
+      } else if (event.type === "session.idle") {
+        setStatus("idle");
+      }
+    };
+
     return subscribe(handleEvent);
-  }, [enabled, opencodeSessionId, subscribe, handleEvent]);
+  }, [enabled, opencodeSessionId, subscribe]);
 
   return status;
 }

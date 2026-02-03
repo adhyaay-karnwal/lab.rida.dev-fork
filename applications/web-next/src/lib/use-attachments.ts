@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, type DragEvent } from "react";
+import { useState, useCallback, useRef, type DragEvent } from "react";
 import { validateImageFile, fileToBase64, isImageFile } from "./file-utils";
 
 export interface Attachment {
@@ -70,7 +70,7 @@ async function processAttachment(
 export function useAttachments(): UseAttachmentsReturn {
   const [attachments, setAttachments] = useState<Attachment[]>([]);
   const [isDragging, setIsDragging] = useState(false);
-  const [dragCounter, setDragCounter] = useState(0);
+  const dragCounterRef = useRef(0);
 
   const updateAttachment = useCallback((id: string, updates: Partial<Attachment>) => {
     setAttachments((currentAttachments) => updateAttachmentById(currentAttachments, id, updates));
@@ -104,20 +104,17 @@ export function useAttachments(): UseAttachmentsReturn {
   const handleDragEnter = useCallback((event: DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    setDragCounter((count) => count + 1);
+    dragCounterRef.current += 1;
     setIsDragging(true);
   }, []);
 
   const handleDragLeave = useCallback((event: DragEvent) => {
     event.preventDefault();
     event.stopPropagation();
-    setDragCounter((count) => {
-      const nextCount = count - 1;
-      if (nextCount === 0) {
-        setIsDragging(false);
-      }
-      return nextCount;
-    });
+    dragCounterRef.current -= 1;
+    if (dragCounterRef.current === 0) {
+      setIsDragging(false);
+    }
   }, []);
 
   const handleDragOver = useCallback((event: DragEvent) => {
@@ -130,7 +127,7 @@ export function useAttachments(): UseAttachmentsReturn {
       event.preventDefault();
       event.stopPropagation();
       setIsDragging(false);
-      setDragCounter(0);
+      dragCounterRef.current = 0;
 
       const { files } = event.dataTransfer;
       if (files && files.length > 0) {

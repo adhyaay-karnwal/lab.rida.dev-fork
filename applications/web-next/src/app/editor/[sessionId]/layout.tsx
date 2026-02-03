@@ -1,7 +1,7 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { use, useEffect } from "react";
+import { use, useEffect, useMemo } from "react";
 import { useRouter } from "next/navigation";
 import useSWR from "swr";
 import { BrowserStreamProvider } from "@/components/browser-stream";
@@ -69,17 +69,20 @@ export default function SessionLayout({ children, params }: SessionLayoutProps) 
 
   const containerUrls = containers.flatMap((container) => container.urls.map(({ url }) => url));
 
+  const contextValue = useMemo(
+    () => ({
+      sessionId,
+      session: sessionData?.session ?? null,
+      project: sessionData?.project ?? null,
+      containers,
+      containerUrls,
+    }),
+    [sessionId, sessionData, containers, containerUrls],
+  );
+
   return (
     <BrowserStreamProvider sessionId={sessionId}>
-      <SessionContext.Provider
-        value={{
-          sessionId,
-          session: sessionData?.session ?? null,
-          project: sessionData?.project ?? null,
-          containers,
-          containerUrls,
-        }}
-      >
+      <SessionContext.Provider value={contextValue}>
         <div className="h-full grid grid-cols-[2fr_1fr]">
           <div className="border-r border-border min-w-0 min-h-0">{children}</div>
           <SessionInfoPanel />
