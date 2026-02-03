@@ -54,6 +54,14 @@
     "./schema/github-settings": {
       "types": "./src/schema/github-settings.ts",
       "default": "./src/schema/github-settings.ts"
+    },
+    "./schema/volumes": {
+      "types": "./src/schema/volumes.ts",
+      "default": "./src/schema/volumes.ts"
+    },
+    "./schema/port-reservations": {
+      "types": "./src/schema/port-reservations.ts",
+      "default": "./src/schema/port-reservations.ts"
     }
   },
   "scripts": {

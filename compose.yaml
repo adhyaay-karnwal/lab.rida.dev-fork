@@ -26,6 +26,12 @@ services:
       POSTGRES_USER: lab
       POSTGRES_PASSWORD: lab
       POSTGRES_DB: lab
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lab"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
     volumes:
       - postgres_data:/var/lib/postgresql/data
 
@@ -38,6 +44,12 @@ services:
     command: ["serve", "--hostname", "0.0.0.0", "--port", "3000"]
     ports:
       - "3002:3000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 30s
     volumes:
       - ./opencode.json:/root/.config/opencode/opencode.json:ro
       - session_workspaces:/workspaces
@@ -59,6 +71,12 @@ services:
       context: .
       dockerfile: services/mcp/Dockerfile
     container_name: lab-mcp
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:3000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:
@@ -71,6 +89,12 @@ services:
     container_name: lab-api
     ports:
       - "4000:4000"
+    healthcheck:
+      test: ["CMD", "wget", "-q", "--spider", "http://localhost:4000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 15s
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock
     environment:

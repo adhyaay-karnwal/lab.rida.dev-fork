@@ -6,6 +6,8 @@ export type {
   ContainerInfo,
   ExitResult,
   LogChunk,
+  RestartPolicy,
+  RestartPolicyName,
 } from "./container";
 export type { NetworkCreateOptions } from "./network";
 export type { ExecOptions, ExecResult } from "./exec";

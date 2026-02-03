@@ -10,6 +10,49 @@ import { publisher } from "../../clients/publisher";
 import type { BrowserService } from "../browser/browser-service";
 import { cleanupSessionNetwork } from "../docker/network";
 
+interface ContainerCleanupResult {
+  dockerId: string;
+  success: boolean;
+  stillExists: boolean;
+  error?: unknown;
+}
+
+async function stopAndRemoveContainerWithVerification(
+  dockerId: string,
+): Promise<ContainerCleanupResult> {
+  try {
+    await docker.stopContainer(dockerId);
+    await docker.removeContainer(dockerId);
+
+    const stillExists = await docker.containerExists(dockerId);
+
+    if (stillExists) {
+      console.error(`[Session Cleanup] Container ${dockerId} still exists after removal attempt`);
+    }
+
+    return { dockerId, success: !stillExists, stillExists };
+  } catch (error) {
+    return { dockerId, success: false, stillExists: true, error };
+  }
+}
+
+function logContainerCleanupFailures(results: ContainerCleanupResult[], sessionId: string): void {
+  const failures = results.filter((result) => !result.success);
+
+  for (const failure of failures) {
+    if (failure.error) {
+      console.error(
+        `[Session Cleanup] Failed to cleanup container dockerId=${failure.dockerId} sessionId=${sessionId}:`,
+        failure.error,
+      );
+    } else if (failure.stillExists) {
+      console.error(
+        `[Session Cleanup] Container dockerId=${failure.dockerId} still exists after cleanup sessionId=${sessionId}`,
+      );
+    }
+  }
+}
+
 export async function cleanupSession(
   sessionId: string,
   browserService: BrowserService,
@@ -29,15 +72,22 @@ export async function cleanupSession(
   });
 
   const containers = await findSessionContainersBySessionId(sessionId);
+  const containersWithDockerIds = containers.filter((container) => container.dockerId);
 
-  await Promise.all(
-    containers
-      .filter((container) => container.dockerId)
-      .map(async (container) => {
-        await docker.stopContainer(container.dockerId);
-        await docker.removeContainer(container.dockerId);
-      }),
+  const cleanupResults = await Promise.allSettled(
+    containersWithDockerIds.map((container) =>
+      stopAndRemoveContainerWithVerification(container.dockerId),
+    ),
   );
+
+  const fulfilledResults = cleanupResults
+    .filter(
+      (result): result is PromiseFulfilledResult<ContainerCleanupResult> =>
+        result.status === "fulfilled",
+    )
+    .map((result) => result.value);
+
+  logContainerCleanupFailures(fulfilledResults, sessionId);
 
   await browserService.forceStopBrowser(sessionId);
 
@@ -45,10 +95,18 @@ export async function cleanupSession(
     try {
       await proxyManager.unregisterCluster(sessionId);
     } catch (error) {
-      console.warn(`Failed to unregister proxy cluster for session ${sessionId}:`, error);
+      console.warn(
+        `[Session Cleanup] Failed to unregister proxy cluster sessionId=${sessionId}:`,
+        error,
+      );
     }
   }
 
-  await cleanupSessionNetwork(sessionId);
+  try {
+    await cleanupSessionNetwork(sessionId);
+  } catch (error) {
+    console.error(`[Session Cleanup] Failed to cleanup network sessionId=${sessionId}:`, error);
+  }
+
   await deleteSession(sessionId);
 }

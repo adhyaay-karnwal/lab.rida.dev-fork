@@ -93,29 +93,9 @@ export class DockerClient implements SandboxProvider {
   }
 
   async createContainer(options: ContainerCreateOptions): Promise<string> {
-    const exposedPorts: Record<string, object> = {};
-    const portBindings: Record<string, { HostPort: string }[]> = {};
-
-    if (options.ports) {
-      for (const port of options.ports) {
-        const protocol = port.protocol ?? "tcp";
-        const key = `${port.container}/${protocol}`;
-        exposedPorts[key] = {};
-        if (port.host !== undefined) {
-          portBindings[key] = [{ HostPort: port.host.toString() }];
-        } else {
-          portBindings[key] = [{ HostPort: "" }];
-        }
-      }
-    }
-
-    const binds: string[] = [];
-    if (options.volumes) {
-      for (const vol of options.volumes) {
-        const mode = vol.readonly ? "ro" : "rw";
-        binds.push(`${vol.source}:${vol.target}:${mode}`);
-      }
-    }
+    const { exposedPorts, portBindings } = this.buildPortConfiguration(options.ports);
+    const binds = this.buildVolumeBinds(options.volumes);
+    const restartPolicy = this.buildRestartPolicy(options.restartPolicy);
 
     const container = await this.docker.createContainer({
       name: options.name,
@@ -124,7 +104,7 @@ export class DockerClient implements SandboxProvider {
       Entrypoint: options.entrypoint,
       WorkingDir: options.workdir,
       Hostname: options.hostname,
-      Env: options.env ? Object.entries(options.env).map(([k, v]) => `${k}=${v}`) : undefined,
+      Env: options.env ? Object.entries(options.env).map(([key, value]) => `${key}=${value}`) : undefined,
       Labels: options.labels,
       ExposedPorts: Object.keys(exposedPorts).length > 0 ? exposedPorts : undefined,
       HostConfig: {
@@ -132,10 +112,57 @@ export class DockerClient implements SandboxProvider {
         Binds: binds.length > 0 ? binds : undefined,
         NetworkMode: options.networkMode,
         Privileged: options.privileged,
+        RestartPolicy: restartPolicy,
       },
     });
 
     return container.id;
+  }
+
+  private buildPortConfiguration(ports?: ContainerCreateOptions["ports"]): {
+    exposedPorts: Record<string, object>;
+    portBindings: Record<string, { HostPort: string }[]>;
+  } {
+    const exposedPorts: Record<string, object> = {};
+    const portBindings: Record<string, { HostPort: string }[]> = {};
+
+    if (!ports) {
+      return { exposedPorts, portBindings };
+    }
+
+    for (const portMapping of ports) {
+      const protocol = portMapping.protocol ?? "tcp";
+      const portKey = `${portMapping.container}/${protocol}`;
+      exposedPorts[portKey] = {};
+      portBindings[portKey] = [{ HostPort: portMapping.host?.toString() ?? "" }];
+    }
+
+    return { exposedPorts, portBindings };
+  }
+
+  private buildVolumeBinds(volumes?: ContainerCreateOptions["volumes"]): string[] {
+    if (!volumes) {
+      return [];
+    }
+
+    return volumes.map((volume) => {
+      const mode = volume.readonly ? "ro" : "rw";
+      return `${volume.source}:${volume.target}:${mode}`;
+    });
+  }
+
+  private buildRestartPolicy(restartPolicy?: ContainerCreateOptions["restartPolicy"]): {
+    Name: string;
+    MaximumRetryCount?: number;
+  } | undefined {
+    if (!restartPolicy) {
+      return undefined;
+    }
+
+    return {
+      Name: restartPolicy.name,
+      MaximumRetryCount: restartPolicy.maximumRetryCount,
+    };
   }
 
   async startContainer(id: string): Promise<void> {
@@ -255,7 +282,7 @@ export class DockerClient implements SandboxProvider {
     }
   }
 
-  async cloneVolume(source: string, target: string): Promise<void> {
+  async cloneVolume(source: string, target: string, timeoutMs = 30000): Promise<void> {
     await this.createVolume(target);
 
     const containerId = await this.createContainer({
@@ -269,13 +296,24 @@ export class DockerClient implements SandboxProvider {
 
     try {
       await this.startContainer(containerId);
-      const { exitCode } = await this.waitContainer(containerId);
-      if (exitCode !== 0) {
-        throw SandboxError.volumeCloneFailed(source, target, `exit code ${exitCode}`);
+
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error("Volume clone timed out")), timeoutMs);
+      });
+
+      const waitResult = await Promise.race([this.waitContainer(containerId), timeoutPromise]);
+
+      if (waitResult.exitCode !== 0) {
+        await this.removeVolume(target);
+        throw SandboxError.volumeCloneFailed(source, target, `exit code ${waitResult.exitCode}`);
       }
-    } finally {
+    } catch (error) {
+      await this.removeVolume(target);
       await this.removeContainer(containerId, true);
+      throw error;
     }
+
+    await this.removeContainer(containerId, true);
   }
 
   async createNetwork(name: string, options: NetworkCreateOptions = {}): Promise<void> {
@@ -298,6 +336,25 @@ export class DockerClient implements SandboxProvider {
     try {
       await this.docker.getNetwork(name).inspect();
       return true;
+    } catch {
+      return false;
+    }
+  }
+
+  async isConnectedToNetwork(containerIdOrName: string, networkName: string): Promise<boolean> {
+    try {
+      const networkInfo = await this.docker.getNetwork(networkName).inspect();
+      const connectedContainers = networkInfo.Containers ?? {};
+
+      return Object.entries(connectedContainers).some(([connectedId, containerInfo]) => {
+        const matchesId = connectedId === containerIdOrName || connectedId.startsWith(containerIdOrName);
+        const matchesName =
+          containerInfo &&
+          typeof containerInfo === "object" &&
+          "Name" in containerInfo &&
+          containerInfo.Name === containerIdOrName;
+        return matchesId || matchesName;
+      });
     } catch {
       return false;
     }

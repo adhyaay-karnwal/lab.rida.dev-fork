@@ -155,6 +155,10 @@ async function createAndStartContainer(
       [LABELS.PROJECT]: projectId,
       [LABELS.CONTAINER]: containerDefinition.id,
     },
+    restartPolicy: {
+      name: "on-failure",
+      maximumRetryCount: 3,
+    },
   });
   console.log(`[Container] Created ${dockerId}, updating database...`);
 
@@ -170,8 +174,16 @@ async function createAndStartContainer(
   );
 
   if (networkAliases.length > 0) {
-    await docker.disconnectFromNetwork(dockerId, networkName);
+    const isConnected = await docker.isConnectedToNetwork(dockerId, networkName);
+    if (isConnected) {
+      await docker.disconnectFromNetwork(dockerId, networkName);
+    }
     await docker.connectToNetwork(dockerId, networkName, { aliases: networkAliases });
+
+    const verifyConnected = await docker.isConnectedToNetwork(dockerId, networkName);
+    if (!verifyConnected) {
+      throw new Error(`Failed to connect container ${dockerId} to network ${networkName}`);
+    }
   }
 
   const clusterContainer =
@@ -277,33 +289,53 @@ export async function initializeSessionContainers(
   }
 }
 
+async function stopAndRemoveContainer(dockerId: string, sessionId: string): Promise<void> {
+  await docker.stopContainer(dockerId);
+  await docker.removeContainer(dockerId);
+}
+
+function logContainerCleanupResults(
+  results: PromiseSettledResult<void>[],
+  dockerIds: string[],
+  sessionId: string,
+): void {
+  results.forEach((result, index) => {
+    if (result.status === "rejected") {
+      console.error(
+        `[Container Cleanup] Failed to cleanup container dockerId=${dockerIds[index]} sessionId=${sessionId}:`,
+        result.reason,
+      );
+    }
+  });
+}
+
 async function cleanupOrphanedContainers(
   sessionId: string,
   dockerIds: string[],
   browserService: BrowserService,
 ): Promise<void> {
-  await Promise.all(
-    dockerIds.map((dockerId) =>
-      docker
-        .stopContainer(dockerId)
-        .then(() => docker.removeContainer(dockerId))
-        .catch((error) =>
-          console.error(`Failed to cleanup orphaned container ${dockerId}:`, error),
-        ),
-    ),
+  const cleanupResults = await Promise.allSettled(
+    dockerIds.map((dockerId) => stopAndRemoveContainer(dockerId, sessionId)),
   );
+
+  logContainerCleanupResults(cleanupResults, dockerIds, sessionId);
 
   if (isProxyInitialized()) {
     try {
       await proxyManager.unregisterCluster(sessionId);
     } catch (error) {
-      console.warn(`Failed to unregister proxy cluster for orphaned session ${sessionId}:`, error);
+      console.warn(
+        `[Container Cleanup] Failed to unregister proxy cluster sessionId=${sessionId}:`,
+        error,
+      );
     }
   }
 
-  await cleanupSessionNetwork(sessionId).catch((error) =>
-    console.error(`Failed to cleanup network for orphaned session ${sessionId}:`, error),
-  );
+  try {
+    await cleanupSessionNetwork(sessionId);
+  } catch (error) {
+    console.error(`[Container Cleanup] Failed to cleanup network sessionId=${sessionId}:`, error);
+  }
 
   await browserService.forceStopBrowser(sessionId);
 }
@@ -326,18 +358,20 @@ async function handleInitializationError(
     );
   }
 
-  await Promise.all(
-    dockerIds.map((dockerId) =>
-      docker
-        .stopContainer(dockerId)
-        .then(() => docker.removeContainer(dockerId))
-        .catch((error) => console.error(`Failed to cleanup container ${dockerId}:`, error)),
-    ),
+  const cleanupResults = await Promise.allSettled(
+    dockerIds.map((dockerId) => stopAndRemoveContainer(dockerId, sessionId)),
   );
 
-  await cleanupSessionNetwork(sessionId).catch((error) =>
-    console.error(`Failed to cleanup network for session ${sessionId}:`, error),
-  );
+  logContainerCleanupResults(cleanupResults, dockerIds, sessionId);
+
+  try {
+    await cleanupSessionNetwork(sessionId);
+  } catch (error) {
+    console.error(
+      `[Initialization Error] Failed to cleanup network sessionId=${sessionId}:`,
+      error,
+    );
+  }
 
   await browserService.forceStopBrowser(sessionId);
   await deleteSession(sessionId);

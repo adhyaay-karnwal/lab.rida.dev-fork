@@ -1,3 +1,10 @@
+export type RestartPolicyName = "no" | "always" | "on-failure" | "unless-stopped";
+
+export interface RestartPolicy {
+  name: RestartPolicyName;
+  maximumRetryCount?: number;
+}
+
 export interface ContainerCreateOptions {
   image: string;
   name?: string;
@@ -11,6 +18,7 @@ export interface ContainerCreateOptions {
   volumes?: VolumeBinding[];
   networkMode?: string;
   privileged?: boolean;
+  restartPolicy?: RestartPolicy;
 }
 
 export interface PortMapping {

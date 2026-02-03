@@ -13,6 +13,8 @@ export type {
   PortAllocator,
   PortAllocatorOptions,
   SandboxProvider,
+  RestartPolicy,
+  RestartPolicyName,
 } from "./types";
 
 // Schemas

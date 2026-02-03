@@ -4,31 +4,62 @@ import { LABELS } from "../../config/constants";
 import { formatNetworkName } from "../../types/session";
 import { findActiveSessionsForReconciliation } from "../repositories/session.repository";
 
+async function connectContainerToNetworkIfNotConnected(
+  containerName: string,
+  networkName: string,
+): Promise<void> {
+  const isConnected = await docker.isConnectedToNetwork(containerName, networkName);
+  if (isConnected) {
+    return;
+  }
+
+  await docker.connectToNetwork(containerName, networkName);
+
+  const verifyConnected = await docker.isConnectedToNetwork(containerName, networkName);
+  if (!verifyConnected) {
+    throw new Error(`Failed to verify connection of ${containerName} to network ${networkName}`);
+  }
+}
+
+async function disconnectContainerFromNetworkIfConnected(
+  containerName: string,
+  networkName: string,
+): Promise<void> {
+  const isConnected = await docker.isConnectedToNetwork(containerName, networkName);
+  if (!isConnected) {
+    return;
+  }
+
+  await docker.disconnectFromNetwork(containerName, networkName);
+}
+
 export async function createSessionNetwork(sessionId: string): Promise<string> {
   const networkName = formatNetworkName(sessionId);
   await docker.createNetwork(networkName, { labels: { [LABELS.SESSION]: sessionId } });
 
   if (config.browserContainerName) {
     try {
-      await docker.connectToNetwork(config.browserContainerName, networkName);
+      await connectContainerToNetworkIfNotConnected(config.browserContainerName, networkName);
     } catch (error) {
-      console.warn(`Failed to connect browser container to network ${networkName}:`, error);
+      console.warn(
+        `[Network] Failed to connect browser container to network ${networkName}:`,
+        error,
+      );
     }
   }
 
   if (config.opencodeContainerName) {
     try {
-      await docker.connectToNetwork(config.opencodeContainerName, networkName);
+      await connectContainerToNetworkIfNotConnected(config.opencodeContainerName, networkName);
     } catch (error) {
-      console.warn(`Failed to connect opencode container to network ${networkName}:`, error);
+      console.warn(
+        `[Network] Failed to connect opencode container to network ${networkName}:`,
+        error,
+      );
     }
   }
 
   return networkName;
-}
-
-function isNotConnectedError(error: unknown): boolean {
-  return String(error).includes("is not connected to network");
 }
 
 export async function cleanupSessionNetwork(sessionId: string): Promise<void> {
@@ -36,31 +67,25 @@ export async function cleanupSessionNetwork(sessionId: string): Promise<void> {
 
   if (config.caddyContainerName) {
     try {
-      await docker.disconnectFromNetwork(config.caddyContainerName, networkName);
+      await disconnectContainerFromNetworkIfConnected(config.caddyContainerName, networkName);
     } catch (error) {
-      if (!isNotConnectedError(error)) {
-        console.warn(`Failed to disconnect caddy from network ${networkName}:`, error);
-      }
+      console.warn(`[Network] Failed to disconnect caddy from network ${networkName}:`, error);
     }
   }
 
   if (config.browserContainerName) {
     try {
-      await docker.disconnectFromNetwork(config.browserContainerName, networkName);
+      await disconnectContainerFromNetworkIfConnected(config.browserContainerName, networkName);
     } catch (error) {
-      if (!isNotConnectedError(error)) {
-        console.warn(`Failed to disconnect browser from network ${networkName}:`, error);
-      }
+      console.warn(`[Network] Failed to disconnect browser from network ${networkName}:`, error);
     }
   }
 
   if (config.opencodeContainerName) {
     try {
-      await docker.disconnectFromNetwork(config.opencodeContainerName, networkName);
+      await disconnectContainerFromNetworkIfConnected(config.opencodeContainerName, networkName);
     } catch (error) {
-      if (!isNotConnectedError(error)) {
-        console.warn(`Failed to disconnect opencode from network ${networkName}:`, error);
-      }
+      console.warn(`[Network] Failed to disconnect opencode from network ${networkName}:`, error);
     }
   }
 
