@@ -76,6 +76,7 @@ export type ErrorHandler = (error: unknown) => void;
 export interface Orchestrator {
   subscribe(sessionId: string): Promise<SessionSnapshot>;
   unsubscribe(sessionId: string): Promise<SessionSnapshot>;
+  warmUp(sessionId: string): Promise<SessionSnapshot>;
   forceStop(sessionId: string): Promise<void>;
   getSnapshot(sessionId: string): Promise<SessionSnapshot>;
   getCachedFrame(sessionId: string): string | null;

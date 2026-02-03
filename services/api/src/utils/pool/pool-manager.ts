@@ -79,7 +79,19 @@ export async function createPooledSession(projectId: string): Promise<Session | 
 
   try {
     await initializeSessionContainers(session.id, projectId, browserServiceRef);
-    console.log(`Pool: Created pooled session ${session.id} for project ${projectId}`);
+
+    try {
+      await browserServiceRef.warmUpBrowser(session.id);
+      console.log(
+        `Pool: Created and warmed up pooled session ${session.id} for project ${projectId}`,
+      );
+    } catch (error) {
+      console.warn(`Pool: Failed to warm up browser for session ${session.id}:`, error);
+      console.log(
+        `Pool: Created pooled session ${session.id} for project ${projectId} (browser will start on first subscriber)`,
+      );
+    }
+
     return session;
   } catch (error) {
     console.error(`Pool: Failed to initialize pooled session ${session.id}:`, error);

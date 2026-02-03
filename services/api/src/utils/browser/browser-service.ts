@@ -32,6 +32,7 @@ export interface BrowserService {
   getBrowserSnapshot(sessionId: string): Promise<SessionSnapshot>;
   subscribeBrowser(sessionId: string): Promise<SessionSnapshot>;
   unsubscribeBrowser(sessionId: string): Promise<SessionSnapshot>;
+  warmUpBrowser(sessionId: string): Promise<SessionSnapshot>;
   forceStopBrowser(sessionId: string): Promise<void>;
   getCachedFrame(sessionId: string): string | null;
   startReconciler(): void;
@@ -134,6 +135,10 @@ export const createBrowserService = async (
 
     unsubscribeBrowser(sessionId: string) {
       return orchestrator.unsubscribe(sessionId);
+    },
+
+    async warmUpBrowser(sessionId: string) {
+      return orchestrator.warmUp(sessionId);
     },
 
     async forceStopBrowser(sessionId: string) {

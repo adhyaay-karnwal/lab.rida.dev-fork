@@ -79,6 +79,12 @@ export const createOrchestrator = (
       return getSnapshot(sessionId);
     },
 
+    async warmUp(sessionId) {
+      await notifyingStateStore.setDesiredState(sessionId, "running");
+      await reconciler.handleDesiredStateChange(sessionId);
+      return getSnapshot(sessionId);
+    },
+
     async unsubscribe(sessionId) {
       const count = sessions.decrementSubscribers(sessionId);
 
