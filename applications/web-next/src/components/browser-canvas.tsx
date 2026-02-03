@@ -65,10 +65,10 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
   };
 
   useEffect(() => {
-    if (isEnabled && frameSnapshot.lastFrame) {
+    if (isEnabled && frameSnapshot.lastFrame && !bitmapRef.current) {
       processFrame(frameSnapshot.lastFrame);
     }
-  }, [isEnabled, frameSnapshot.lastFrame, processFrame]);
+  }, [isEnabled, frameSnapshot.lastFrame]);
 
   const handleFrameEvent = (event: { type: "frame"; data: string; timestamp: number }) => {
     processFrame(event.data);
