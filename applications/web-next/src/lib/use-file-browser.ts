@@ -216,7 +216,7 @@ export function useFileBrowser(sessionId: string | null): {
           dispatch({ type: "SET_LOADED_CONTENTS", path, contents: nodes });
         }
       } catch (error) {
-        console.error("Failed to fetch directory contents:", error);
+        console.error(error);
       } finally {
         dispatch({ type: "REMOVE_LOADING_PATH", path });
       }
@@ -241,7 +241,7 @@ export function useFileBrowser(sessionId: string | null): {
         patch: response.data.patch ?? null,
       });
     } catch (error) {
-      console.error("Failed to read file:", error);
+      console.error(error);
     } finally {
       dispatch({ type: "SET_PREVIEW_LOADING", loading: false });
     }
@@ -266,7 +266,7 @@ export function useFileBrowser(sessionId: string | null): {
         dispatch({ type: "SET_LOADED_CONTENTS", path: dirPath, contents: nodes });
       }
     } catch (error) {
-      console.error("Failed to fetch directory contents:", error);
+      console.error(error);
     }
   };
 

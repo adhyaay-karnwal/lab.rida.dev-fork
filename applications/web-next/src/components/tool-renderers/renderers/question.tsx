@@ -314,9 +314,20 @@ function ActionButtons({ callId, questions, isSubmitting, onReply, onReject }: A
   );
 }
 
+function getNestedString(input: unknown, ...keys: string[]): string | undefined {
+  let current: unknown = input;
+  for (const key of keys) {
+    if (typeof current !== "object" || current === null) return undefined;
+    current = (current as Record<string, unknown>)[key];
+  }
+  return typeof current === "string" ? current : undefined;
+}
+
 function QuestionRenderer({ callId, input, status, output, error }: ToolRendererProps) {
   const questionActions = useQuestionActions();
   const questions = getArray<QuestionInfo>(input, "questions") ?? [];
+
+  const requestId = getNestedString(input, "metadata", "requestId");
 
   if (status === "completed") {
     return (
@@ -357,7 +368,7 @@ function QuestionRenderer({ callId, input, status, output, error }: ToolRenderer
           />
         ))}
         <ActionButtons
-          callId={callId}
+          callId={requestId}
           questions={questions}
           isSubmitting={questionActions.isSubmitting}
           onReply={questionActions.reply}

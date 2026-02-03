@@ -51,22 +51,15 @@ export function OpenCodeSessionProvider({ sessionId, children }: OpenCodeSession
 
     (async () => {
       try {
-        console.log("[OpenCodeSession] Starting SSE subscription for session:", sessionId);
         const { stream } = await client.event.subscribe({}, { signal });
-        console.log("[OpenCodeSession] SSE subscription established");
 
         for await (const event of stream) {
-          console.log("[OpenCodeSession] Raw event received:", event.type);
           for (const listener of listenersRef.current) {
             listener(event);
           }
         }
-        console.log("[OpenCodeSession] SSE stream ended");
       } catch (error) {
-        if (!signal.aborted) {
-          console.error("[OpenCodeSession] SSE error:", error);
-        }
-        // Connection closed or aborted - cleanup handles this
+        console.warn(error);
       }
     })();
 

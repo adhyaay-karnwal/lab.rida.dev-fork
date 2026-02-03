@@ -56,9 +56,7 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
           return newBitmap;
         });
       })
-      .catch((error) => {
-        console.error("Failed to process frame:", error);
-      });
+      .catch((error) => console.error(error));
   };
 
   useEffect(() => {

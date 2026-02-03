@@ -32,7 +32,6 @@ export function useQuestions(labSessionId: string): UseQuestionsResult {
       throw new Error("Client not initialized");
     }
 
-    console.log("[useQuestions] Sending reply:", { requestId, answers });
     setIsSubmitting(true);
 
     try {
@@ -40,13 +39,10 @@ export function useQuestions(labSessionId: string): UseQuestionsResult {
         requestID: requestId,
         answers,
       });
-      console.log("[useQuestions] Reply response:", response);
       if (response.error) {
         throw new Error(`Failed to reply to question: ${JSON.stringify(response.error)}`);
       }
-      console.log("[useQuestions] Reply successful, waiting for events...");
     } catch (replyError) {
-      console.error("[useQuestions] reply error:", replyError);
       throw replyError;
     } finally {
       setIsSubmitting(false);
@@ -68,7 +64,6 @@ export function useQuestions(labSessionId: string): UseQuestionsResult {
         throw new Error(`Failed to reject question: ${JSON.stringify(response.error)}`);
       }
     } catch (rejectError) {
-      console.error("[useQuestions] reject error:", rejectError);
       throw rejectError;
     } finally {
       setIsSubmitting(false);

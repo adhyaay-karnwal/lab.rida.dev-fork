@@ -105,7 +105,7 @@ function SessionInfoPanel() {
   }
 
   return (
-    <div className="min-w-64 bg-bg z-20">
+    <div className="min-w-64 bg-bg z-20 overflow-y-auto">
       <SessionInfoView
         session={session}
         project={project}

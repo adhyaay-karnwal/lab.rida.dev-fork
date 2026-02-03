@@ -316,7 +316,7 @@ export function useAgent(labSessionId: string): UseAgentResult {
         sessionID: currentOpencodeSessionRef.current,
       });
     } catch (error) {
-      console.error("[useAgent] Abort failed:", error);
+      console.warn(error);
     }
   };
 
