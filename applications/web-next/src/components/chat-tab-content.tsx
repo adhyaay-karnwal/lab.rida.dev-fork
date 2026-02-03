@@ -66,8 +66,23 @@ export function ChatTabContent({
     if (sessionStatus.type === "retry") {
       onAbort();
       setRateLimitMessage("Rate limited. Try a different model.");
+    } else if (sessionStatus.type === "error" && sessionStatus.message) {
+      setRateLimitMessage(formatErrorMessage(sessionStatus));
     }
   }, [sessionStatus, onAbort]);
+
+  function formatErrorMessage(status: SessionStatus): string | null {
+    if (status.type !== "error" || !status.message) return null;
+
+    if (status.message.includes("credit balance")) {
+      return "Insufficient credits. Please add credits to continue.";
+    }
+    if (status.statusCode === 429) {
+      return "Rate limited. Please wait or try a different model.";
+    }
+
+    return status.message;
+  }
 
   useEffect(() => {
     setRateLimitMessage(null);

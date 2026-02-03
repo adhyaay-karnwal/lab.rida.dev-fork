@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import useSWR, { useSWRConfig } from "swr";
-import type { Message, Part } from "@opencode-ai/sdk/v2/client";
+import type { Message, Part, AssistantMessage } from "@opencode-ai/sdk/v2/client";
 import { api } from "./api";
 import { useOpenCodeSession, type Event } from "./opencode-session";
 import { useSessionClient, createSessionClient } from "./use-session-client";
@@ -29,7 +29,7 @@ export type SessionStatus =
   | { type: "idle" }
   | { type: "busy" }
   | { type: "retry"; attempt: number; message: string; next: number }
-  | { type: "error"; message?: string };
+  | { type: "error"; message?: string; isRetryable?: boolean; statusCode?: number };
 
 interface UseAgentResult {
   isLoading: boolean;
@@ -133,6 +133,30 @@ function extractQuestionCallID(event: Event): string | null {
   if (typeof properties !== "object" || properties === null) return null;
   if (!("callID" in properties) || typeof properties.callID !== "string") return null;
   return properties.callID;
+}
+
+interface MessageError {
+  message: string;
+  isRetryable: boolean;
+  statusCode?: number;
+}
+
+function extractMessageError(info: Message): MessageError | null {
+  if (info.role !== "assistant") return null;
+  const assistantMessage = info as AssistantMessage;
+  if (!assistantMessage.error) return null;
+
+  const error = assistantMessage.error;
+  const message =
+    "message" in error.data && typeof error.data.message === "string"
+      ? error.data.message
+      : "An error occurred";
+
+  return {
+    message,
+    isRetryable: error.name === "APIError" ? error.data.isRetryable : true,
+    statusCode: error.name === "APIError" ? error.data.statusCode : undefined,
+  };
 }
 
 async function fetchPendingQuestions(labSessionId: string): Promise<PendingQuestion[]> {
@@ -271,6 +295,21 @@ export function useAgent(labSessionId: string): UseAgentResult {
         if (existing) return base;
         return [...base, { id: info.id, role: info.role, parts: [] }];
       });
+
+      const messageError = extractMessageError(info);
+      if (messageError) {
+        setSessionStatus({
+          type: "error",
+          message: messageError.message,
+          isRetryable: messageError.isRetryable,
+          statusCode: messageError.statusCode,
+        });
+        setIsSending(false);
+        if (sendingTimeoutRef.current) {
+          clearTimeout(sendingTimeoutRef.current);
+          sendingTimeoutRef.current = null;
+        }
+      }
     };
 
     const handleMessagePartUpdated = (part: Part) => {
