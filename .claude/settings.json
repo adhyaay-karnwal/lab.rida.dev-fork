@@ -6,7 +6,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bun lint --fix"
+            "command": "bun --filter=* lint --fix"
           },
           {
             "type": "command",
