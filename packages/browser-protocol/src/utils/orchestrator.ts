@@ -24,6 +24,7 @@ export const createOrchestrator = (
   config: OrchestratorConfig,
 ): Orchestrator => {
   const sessions = createSessionManager();
+  const stoppedSessions = new Set<string>();
   const stateChangeHandlers: StateChangeHandler[] = [];
   const errorHandlers: ErrorHandler[] = [];
 
@@ -115,6 +116,7 @@ export const createOrchestrator = (
     },
 
     async forceStop(sessionId) {
+      stoppedSessions.add(sessionId);
       sessions.delete(sessionId);
       try {
         await daemonController.stop(sessionId);
@@ -141,12 +143,12 @@ export const createOrchestrator = (
     onError: (handler) => errorHandlers.push(handler),
 
     async handleDaemonEvent(event: DaemonEvent) {
+      if (stoppedSessions.has(event.sessionId)) return;
+
       try {
         await reconciler.handleDaemonEvent(event);
       } catch (error) {
-        const session = await stateStore.getState(event.sessionId);
-        if (!session) return;
-
+        if (stoppedSessions.has(event.sessionId)) return;
         notifyError(error);
       }
     },

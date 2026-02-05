@@ -1,4 +1,5 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
+import type { DockerClient } from "@lab/sandbox-docker";
 import { z } from "zod/v4";
 import type { ToolContext } from "../types/tool";
 import { config } from "../config/environment";
@@ -53,6 +54,29 @@ function portNotFoundError(port: number, available: number[]): ToolResult {
 
 function containerNotRunningError(containerId: string): ToolResult {
   return errorResult(`Error: Container "${containerId}" is not running`);
+}
+
+function formatSessionNetworkName(sessionId: string): string {
+  return `lab-${sessionId}`;
+}
+
+async function ensureSharedContainerConnected(
+  docker: DockerClient,
+  sessionId: string,
+  containerName: string,
+): Promise<void> {
+  const networkName = formatSessionNetworkName(sessionId);
+  const networkExists = await docker.networkExists(networkName);
+  if (!networkExists) {
+    throw new Error(`Session network "${networkName}" not found`);
+  }
+
+  const connected = await docker.isConnectedToNetwork(containerName, networkName);
+  if (connected) {
+    return;
+  }
+
+  await docker.connectToNetwork(containerName, networkName);
 }
 
 export function container(server: McpServer, { docker }: ToolContext) {
@@ -166,6 +190,15 @@ export function container(server: McpServer, { docker }: ToolContext) {
       if (!service) {
         const availablePorts = data.services.flatMap(({ ports }) => ports);
         return portNotFoundError(args.port, availablePorts);
+      }
+
+      try {
+        await ensureSharedContainerConnected(docker, args.sessionId, config.browserContainerName);
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error);
+        return errorResult(
+          `Error: Failed to ensure browser connectivity for session "${args.sessionId}": ${message}`,
+        );
       }
 
       const internalUrl = `http://${args.sessionId}--${args.port}:${args.port}`;

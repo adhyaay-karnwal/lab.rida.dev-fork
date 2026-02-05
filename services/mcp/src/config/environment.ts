@@ -38,10 +38,16 @@ if (!browserDaemonUrl) {
   throw new Error("BROWSER_DAEMON_URL environment variable is required");
 }
 
+const browserContainerName = process.env.BROWSER_CONTAINER_NAME;
+if (!browserContainerName) {
+  throw new Error("BROWSER_CONTAINER_NAME environment variable is required");
+}
+
 export const config = {
   port: parseInt(port, 10),
   apiBaseUrl,
   browserDaemonUrl,
+  browserContainerName,
   rustfs: {
     endpoint: rustfsEndpoint,
     accessKey: rustfsAccessKey,

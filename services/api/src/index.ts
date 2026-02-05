@@ -7,6 +7,7 @@ import { ApiServer } from "./clients/server";
 import { ContainerMonitor } from "./monitors/container.monitor";
 import { OpenCodeMonitor } from "./monitors/opencode.monitor";
 import { LogMonitor } from "./monitors/log.monitor";
+import { NetworkReconcileMonitor } from "./monitors/network-reconcile.monitor";
 import { PoolManager } from "./managers/pool.manager";
 import { BrowserServiceManager } from "./managers/browser-service.manager";
 import { SessionLifecycleManager } from "./managers/session-lifecycle.manager";
@@ -35,9 +36,9 @@ const envSchema = type({
   RECONCILE_INTERVAL_MS: "string.integer.parse = '5000'",
   MAX_DAEMON_RETRIES: "string.integer.parse = '3'",
   BROWSER_SOCKET_VOLUME: "string = 'lab_browser_sockets'",
-  BROWSER_CONTAINER_NAME: "string?",
-  OPENCODE_CONTAINER_NAME: "string?",
-  PROXY_CONTAINER_NAME: "string?",
+  BROWSER_CONTAINER_NAME: "string",
+  OPENCODE_CONTAINER_NAME: "string",
+  PROXY_CONTAINER_NAME: "string",
   PROXY_BASE_DOMAIN: "string",
   POOL_SIZE: "string.integer.parse = '0'",
   GITHUB_CLIENT_ID: "string?",
@@ -125,6 +126,11 @@ entry({
       logMonitor,
       containerMonitor,
       openCodeMonitor,
+      networkReconcileMonitor: new NetworkReconcileMonitor(sandbox, [
+        env.BROWSER_CONTAINER_NAME,
+        env.PROXY_CONTAINER_NAME,
+        env.OPENCODE_CONTAINER_NAME,
+      ]),
     };
   },
   main: async ({ env, extras }) => {
@@ -138,6 +144,7 @@ entry({
       logMonitor,
       containerMonitor,
       openCodeMonitor,
+      networkReconcileMonitor,
     } = extras;
 
     await browserService.initialize();
@@ -147,6 +154,7 @@ entry({
     deferredPublisher.resolve(publisher);
 
     browserService.startReconciler();
+    await networkReconcileMonitor.start();
     poolManager.initialize();
     logMonitor.start();
     containerMonitor.start(logMonitor);
@@ -156,6 +164,7 @@ entry({
       containerMonitor.stop();
       openCodeMonitor.stop();
       logMonitor.stop();
+      networkReconcileMonitor.stop();
       server.shutdown();
       redis.close();
     };
