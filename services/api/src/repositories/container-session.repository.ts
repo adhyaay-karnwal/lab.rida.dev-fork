@@ -10,7 +10,7 @@ import { CONTAINER_STATUS, type ContainerStatus } from "../types/container";
 
 export interface SessionService {
   containerId: string;
-  dockerId: string;
+  runtimeId: string;
   image: string;
   status: string;
   ports: number[];
@@ -19,7 +19,7 @@ export interface SessionService {
 export async function createSessionContainer(data: {
   sessionId: string;
   containerId: string;
-  dockerId: string;
+  runtimeId: string;
   status: string;
 }): Promise<SessionContainer> {
   const [sessionContainer] = await db.insert(sessionContainers).values(data).returning();
@@ -42,7 +42,7 @@ export async function findAllRunningSessionContainers(): Promise<
   {
     id: string;
     sessionId: string;
-    dockerId: string;
+    runtimeId: string;
     hostname: string;
   }[]
 > {
@@ -50,7 +50,7 @@ export async function findAllRunningSessionContainers(): Promise<
     .select({
       id: sessionContainers.id,
       sessionId: sessionContainers.sessionId,
-      dockerId: sessionContainers.dockerId,
+      runtimeId: sessionContainers.runtimeId,
       hostname: containers.hostname,
     })
     .from(sessionContainers)
@@ -60,7 +60,7 @@ export async function findAllRunningSessionContainers(): Promise<
   return rows.map((row) => ({
     id: row.id,
     sessionId: row.sessionId,
-    dockerId: row.dockerId,
+    runtimeId: row.runtimeId,
     hostname: row.hostname ?? row.id,
   }));
 }
@@ -69,7 +69,7 @@ export async function findAllActiveSessionContainers(): Promise<
   {
     id: string;
     sessionId: string;
-    dockerId: string;
+    runtimeId: string;
     status: string;
   }[]
 > {
@@ -77,7 +77,7 @@ export async function findAllActiveSessionContainers(): Promise<
     .select({
       id: sessionContainers.id,
       sessionId: sessionContainers.sessionId,
-      dockerId: sessionContainers.dockerId,
+      runtimeId: sessionContainers.runtimeId,
       status: sessionContainers.status,
     })
     .from(sessionContainers)
@@ -86,17 +86,17 @@ export async function findAllActiveSessionContainers(): Promise<
     );
 }
 
-export async function findSessionContainerByDockerId(
-  dockerId: string,
+export async function findSessionContainerByRuntimeId(
+  runtimeId: string,
 ): Promise<{ id: string } | null> {
   const [row] = await db
     .select({ id: sessionContainers.id })
     .from(sessionContainers)
-    .where(eq(sessionContainers.dockerId, dockerId));
+    .where(eq(sessionContainers.runtimeId, runtimeId));
   return row ?? null;
 }
 
-export async function findSessionContainerDetailsByDockerId(dockerId: string): Promise<{
+export async function findSessionContainerDetailsByRuntimeId(runtimeId: string): Promise<{
   id: string;
   sessionId: string;
   containerId: string;
@@ -111,7 +111,7 @@ export async function findSessionContainerDetailsByDockerId(dockerId: string): P
     })
     .from(sessionContainers)
     .innerJoin(containers, eq(sessionContainers.containerId, containers.id))
-    .where(eq(sessionContainers.dockerId, dockerId));
+    .where(eq(sessionContainers.runtimeId, runtimeId));
 
   if (!row) return null;
 
@@ -123,14 +123,14 @@ export async function findSessionContainerDetailsByDockerId(dockerId: string): P
   };
 }
 
-export async function updateSessionContainerDockerId(
+export async function updateSessionContainerRuntimeId(
   sessionId: string,
   containerId: string,
-  dockerId: string,
+  runtimeId: string,
 ): Promise<void> {
   await db
     .update(sessionContainers)
-    .set({ dockerId })
+    .set({ runtimeId })
     .where(
       and(
         eq(sessionContainers.sessionId, sessionId),
@@ -218,7 +218,7 @@ export async function getSessionServices(sessionId: string): Promise<SessionServ
   const containerRows = await db
     .select({
       containerId: sessionContainers.containerId,
-      dockerId: sessionContainers.dockerId,
+      runtimeId: sessionContainers.runtimeId,
       status: sessionContainers.status,
       hostname: containers.hostname,
       image: containers.image,
@@ -243,7 +243,7 @@ export async function getSessionServices(sessionId: string): Promise<SessionServ
 
   return containerRows.map((row) => ({
     containerId: row.containerId,
-    dockerId: row.dockerId,
+    runtimeId: row.runtimeId,
     image: row.image,
     status: row.status,
     ports: (portsByContainerId.get(row.containerId) ?? []).map(({ port }) => port),
@@ -274,14 +274,14 @@ export async function getSessionContainersWithPorts(sessionId: string): Promise<
 export async function getSessionContainersForReconciliation(sessionId: string): Promise<
   {
     containerId: string;
-    dockerId: string;
+    runtimeId: string;
     port: number;
   }[]
 > {
   return db
     .select({
       containerId: sessionContainers.containerId,
-      dockerId: sessionContainers.dockerId,
+      runtimeId: sessionContainers.runtimeId,
       port: containerPorts.port,
     })
     .from(sessionContainers)
@@ -301,13 +301,13 @@ export async function getWorkspaceContainerId(sessionId: string): Promise<string
   return result[0]?.containerId ?? null;
 }
 
-export async function getWorkspaceContainerDockerId(sessionId: string): Promise<{
-  dockerId: string;
+export async function getWorkspaceContainerRuntimeId(sessionId: string): Promise<{
+  runtimeId: string;
   containerId: string;
 } | null> {
   const result = await db
     .select({
-      dockerId: sessionContainers.dockerId,
+      runtimeId: sessionContainers.runtimeId,
       containerId: sessionContainers.containerId,
     })
     .from(sessionContainers)

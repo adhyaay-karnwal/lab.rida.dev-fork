@@ -1,6 +1,11 @@
 import { entry } from "@lab/entry-point";
 import { type } from "arktype";
-import { DockerClient, DockerNetworkManager, DockerWorkspaceManager } from "@lab/sandbox-docker";
+import {
+  DockerClient,
+  DockerNetworkManager,
+  DockerRuntimeManager,
+  DockerWorkspaceManager,
+} from "@lab/sandbox-docker";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 import { createImageStoreFromEnv } from "@lab/context";
 import { widelogger } from "@lab/widelogger";
@@ -54,6 +59,14 @@ entry({
         workspacesVolume: VOLUMES.WORKSPACES,
         workspacesMount: "/workspaces",
       }),
+      runtime: new DockerRuntimeManager(dockerClient, {
+        workspacesSource: VOLUMES.WORKSPACES,
+        workspacesTarget: "/workspaces",
+        opencodeAuthSource: VOLUMES.OPENCODE_AUTH,
+        opencodeAuthTarget: VOLUMES.OPENCODE_AUTH_TARGET,
+        browserSocketSource: env.BROWSER_SOCKET_VOLUME,
+        browserSocketTarget: VOLUMES.BROWSER_SOCKET_DIR,
+      }),
     });
 
     const opencode = createOpencodeClient({ baseUrl: env.OPENCODE_URL });
@@ -81,7 +94,6 @@ entry({
 
     const sessionLifecycle = new SessionLifecycleManager(
       {
-        browserSocketVolume: env.BROWSER_SOCKET_VOLUME,
         containerNames,
       },
       sandbox,

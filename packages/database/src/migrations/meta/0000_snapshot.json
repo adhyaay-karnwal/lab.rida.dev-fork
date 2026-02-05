@@ -80,12 +80,8 @@
           "name": "browser_sessions_session_id_sessions_id_fk",
           "tableFrom": "browser_sessions",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -133,12 +129,8 @@
           "name": "container_dependencies_container_id_containers_id_fk",
           "tableFrom": "container_dependencies",
           "tableTo": "containers",
-          "columnsFrom": [
-            "container_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["container_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -146,12 +138,8 @@
           "name": "container_dependencies_depends_on_container_id_containers_id_fk",
           "tableFrom": "container_dependencies",
           "tableTo": "containers",
-          "columnsFrom": [
-            "depends_on_container_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["depends_on_container_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -198,12 +186,8 @@
           "name": "container_env_vars_container_id_containers_id_fk",
           "tableFrom": "container_env_vars",
           "tableTo": "containers",
-          "columnsFrom": [
-            "container_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["container_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -237,12 +221,8 @@
           "name": "container_permissions_container_id_containers_id_fk",
           "tableFrom": "container_permissions",
           "tableTo": "containers",
-          "columnsFrom": [
-            "container_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["container_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -283,12 +263,8 @@
           "name": "container_ports_container_id_containers_id_fk",
           "tableFrom": "container_ports",
           "tableTo": "containers",
-          "columnsFrom": [
-            "container_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["container_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -356,12 +332,8 @@
           "name": "containers_project_id_projects_id_fk",
           "tableFrom": "containers",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -592,12 +564,8 @@
           "name": "orchestration_requests_resolved_project_id_projects_id_fk",
           "tableFrom": "orchestration_requests",
           "tableTo": "projects",
-          "columnsFrom": [
-            "resolved_project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["resolved_project_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         },
@@ -605,12 +573,8 @@
           "name": "orchestration_requests_resolved_session_id_sessions_id_fk",
           "tableFrom": "orchestration_requests",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "resolved_session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["resolved_session_id"],
+          "columnsTo": ["id"],
           "onDelete": "no action",
           "onUpdate": "no action"
         }
@@ -814,12 +778,8 @@
           "name": "platform_chat_mappings_session_id_sessions_id_fk",
           "tableFrom": "platform_chat_mappings",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -829,10 +789,7 @@
         "platform_chat_unique": {
           "name": "platform_chat_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "platform",
-            "platform_chat_id"
-          ]
+          "columns": ["platform", "platform_chat_id"]
         }
       },
       "policies": {},
@@ -888,12 +845,8 @@
           "name": "port_reservations_session_id_sessions_id_fk",
           "tableFrom": "port_reservations",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -903,10 +856,7 @@
         "port_reservations_port_type_unique": {
           "name": "port_reservations_port_type_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "port",
-            "type"
-          ]
+          "columns": ["port", "type"]
         }
       },
       "policies": {},
@@ -1015,12 +965,8 @@
           "name": "session_containers_session_id_sessions_id_fk",
           "tableFrom": "session_containers",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         },
@@ -1028,12 +974,8 @@
           "name": "session_containers_container_id_containers_id_fk",
           "tableFrom": "session_containers",
           "tableTo": "containers",
-          "columnsFrom": [
-            "container_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["container_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1107,12 +1049,8 @@
           "name": "sessions_project_id_projects_id_fk",
           "tableFrom": "sessions",
           "tableTo": "projects",
-          "columnsFrom": [
-            "project_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["project_id"],
+          "columnsTo": ["id"],
           "onDelete": "cascade",
           "onUpdate": "no action"
         }
@@ -1172,12 +1110,8 @@
           "name": "volumes_session_id_sessions_id_fk",
           "tableFrom": "volumes",
           "tableTo": "sessions",
-          "columnsFrom": [
-            "session_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
+          "columnsFrom": ["session_id"],
+          "columnsTo": ["id"],
           "onDelete": "set null",
           "onUpdate": "no action"
         }
@@ -1187,9 +1121,7 @@
         "volumes_name_unique": {
           "name": "volumes_name_unique",
           "nullsNotDistinct": false,
-          "columns": [
-            "name"
-          ]
+          "columns": ["name"]
         }
       },
       "policies": {},

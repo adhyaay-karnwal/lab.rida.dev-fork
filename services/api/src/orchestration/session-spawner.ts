@@ -129,7 +129,7 @@ async function createSessionWithContainers(
     const sessionContainer = await createSessionContainer({
       sessionId: session.id,
       containerId: definition.id,
-      dockerId: "",
+      runtimeId: "",
       status: CONTAINER_STATUS.STARTING,
     });
 

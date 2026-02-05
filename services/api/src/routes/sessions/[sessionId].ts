@@ -35,8 +35,8 @@ const GET = withParams<{ sessionId: string }, SessionReadContext>(
 
     const containersWithStatus = await Promise.all(
       containers.map(async (container) => {
-        if (!container.dockerId) return { ...container, info: null, urls: [] };
-        const info = await ctx.sandbox.provider.inspectContainer(container.dockerId);
+        if (!container.runtimeId) return { ...container, info: null, urls: [] };
+        const info = await ctx.sandbox.provider.inspectContainer(container.runtimeId);
         const urls = info?.ports
           ? buildContainerUrls(sessionId, info.ports, ctx.proxyBaseDomain)
           : [];

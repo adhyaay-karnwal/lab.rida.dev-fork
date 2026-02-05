@@ -68,7 +68,7 @@ export interface SessionContainer {
   id: string;
   sessionId: string;
   containerId: string;
-  dockerId: string;
+  runtimeId: string;
   status: "starting" | "running" | "stopped";
   info: SessionContainerInfo | null;
   urls: string[];

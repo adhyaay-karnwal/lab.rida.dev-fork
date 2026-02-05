@@ -31,6 +31,13 @@ export type { VolumeManager } from "./types/volume";
 // Types - Workspace
 export type { WorkspaceManager, WorkspaceManagerConfig } from "./types/workspace";
 
+// Types - Runtime
+export type {
+  RuntimeManager,
+  RuntimeContainerStartInput,
+  RuntimeContainerStartResult,
+} from "./types/runtime";
+
 // Types - Events
 export type {
   ContainerEvent,

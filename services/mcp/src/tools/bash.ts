@@ -5,7 +5,7 @@ import type { ToolContext } from "../types/tool";
 import { config } from "../config/environment";
 
 interface WorkspaceContainerResponse {
-  dockerId: string;
+  runtimeId: string;
   workdir: string;
 }
 
@@ -100,20 +100,20 @@ export function bash(server: McpServer, { docker }: ToolContext) {
         };
       }
 
-      const exists = await docker.containerExists(workspace.dockerId);
+      const exists = await docker.containerExists(workspace.runtimeId);
       if (!exists) {
         return {
           isError: true,
           content: [
             {
               type: "text",
-              text: `Error: Workspace container "${workspace.dockerId}" not found or not running`,
+              text: `Error: Workspace container "${workspace.runtimeId}" not found or not running`,
             },
           ],
         };
       }
 
-      const result = await docker.exec(workspace.dockerId, {
+      const result = await docker.exec(workspace.runtimeId, {
         command: ["sh", "-c", args.command],
         workdir: args.workdir || workspace.workdir,
       });

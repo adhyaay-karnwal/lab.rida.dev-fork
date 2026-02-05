@@ -436,24 +436,24 @@ const feedback = tv({
 
 function ReviewFeedback({ children }: { children: ReactNode }) {
   const { state, actions, meta } = useReview();
-  const [value, setValue] = useState("");
 
   useEffect(() => {
-    if (!state.selection) {
-      setValue("");
+    if (!state.selection && meta.textareaRef.current) {
+      meta.textareaRef.current.value = "";
     }
-  }, [state.selection]);
+  }, [state.selection, meta.textareaRef]);
 
   if (!state.selection) return null;
 
   const handleSubmit = () => {
-    actions.submitFeedback(value);
+    const feedback = meta.textareaRef.current?.value ?? "";
+    actions.submitFeedback(feedback);
   };
 
   return (
     <TextAreaGroup.Provider
-      state={{ value }}
-      actions={{ onChange: setValue, onSubmit: handleSubmit }}
+      state={{}}
+      actions={{ onSubmit: handleSubmit }}
       meta={{ textareaRef: meta.textareaRef }}
     >
       <div className={feedback()}>{children}</div>

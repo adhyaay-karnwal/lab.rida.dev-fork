@@ -6,7 +6,7 @@ import { useMultiplayer } from "./multiplayer";
 type LogSource = {
   id: string;
   hostname: string;
-  dockerId: string;
+  runtimeId: string;
   status: "streaming" | "stopped" | "error";
 };
 

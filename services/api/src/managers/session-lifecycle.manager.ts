@@ -1,17 +1,16 @@
-import { initializeSessionContainers } from "../docker/containers";
+import { initializeSessionContainers } from "../runtime/containers";
 import { SessionCleanupService } from "../services/session-cleanup.service";
 import {
   cleanupSessionNetwork,
   cleanupOrphanedNetworks,
   type NetworkContainerNames,
-} from "../docker/network";
+} from "../runtime/network";
 import type { BrowserServiceManager } from "./browser-service.manager";
 import type { ProxyManager } from "../services/proxy.service";
 import type { Sandbox } from "../types/dependencies";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
 
 export interface SessionLifecycleConfig {
-  browserSocketVolume: string;
   containerNames: NetworkContainerNames;
 }
 
@@ -27,7 +26,7 @@ export class SessionLifecycleManager {
   ) {}
 
   private getDeps() {
-    const { containerNames, browserSocketVolume } = this.config;
+    const { containerNames } = this.config;
     const cleanupService = new SessionCleanupService({
       sandbox: this.sandbox,
       publisher: this.deferredPublisher.get(),
@@ -38,7 +37,6 @@ export class SessionLifecycleManager {
 
     return {
       containerNames,
-      browserSocketVolume,
       sandbox: this.sandbox,
       publisher: this.deferredPublisher.get(),
       proxyManager: this.proxyManager,

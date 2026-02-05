@@ -1,6 +1,5 @@
 import * as net from "node:net";
 import * as fs from "node:fs";
-import type { Page } from "playwright-core";
 import { BrowserManager } from "agent-browser/dist/browser.js";
 import { StreamServer } from "agent-browser/dist/stream-server.js";
 import { executeCommand } from "agent-browser/dist/actions.js";
@@ -24,7 +23,9 @@ const state: {
   socketServer: net.Server | null;
 } = { browser: null, streamServer: null, socketServer: null };
 
-const setupPageEvents = (sessionId: string, page: Page) => {
+type BrowserPage = ReturnType<BrowserManager["getPage"]>;
+
+const setupPageEvents = (sessionId: string, page: BrowserPage) => {
   page.on("console", (msg) => {
     console.log(`[DaemonWorker:${sessionId}] Console ${msg.type()}:`, msg.text());
     postMessage({ type: "browser:console", data: { level: msg.type(), text: msg.text() } });
@@ -64,9 +65,9 @@ const setupPageEvents = (sessionId: string, page: Page) => {
 };
 
 const setupBrowserEvents = (sessionId: string, browser: BrowserManager) => {
-  const trackedPages = new Set<Page>();
+  const trackedPages = new Set<BrowserPage>();
 
-  const trackPage = (page: Page) => {
+  const trackPage = (page: BrowserPage) => {
     if (trackedPages.has(page)) return;
     trackedPages.add(page);
     setupPageEvents(sessionId, page);

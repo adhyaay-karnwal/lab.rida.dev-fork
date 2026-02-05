@@ -13,7 +13,7 @@ type LogChunk = {
 type LogSource = {
   id: string;
   hostname: string;
-  dockerId: string;
+  runtimeId: string;
   status: "streaming" | "stopped" | "error";
 };
 
@@ -33,7 +33,7 @@ class LogStreamTracker {
   constructor(
     public readonly containerId: string,
     public readonly sessionId: string,
-    public readonly dockerId: string,
+    public readonly runtimeId: string,
     public readonly hostname: string,
     private readonly sandbox: Sandbox,
     private readonly getPublisher: () => Publisher,
@@ -67,14 +67,14 @@ class LogStreamTracker {
     return {
       id: this.containerId,
       hostname: this.hostname,
-      dockerId: this.dockerId,
+      runtimeId: this.runtimeId,
       status: this.isStreaming ? "streaming" : "stopped",
     };
   }
 
   private async runStreamLoop(): Promise<void> {
     try {
-      for await (const chunk of this.sandbox.provider.streamLogs(this.dockerId, { tail: 100 })) {
+      for await (const chunk of this.sandbox.provider.streamLogs(this.runtimeId, { tail: 100 })) {
         if (!this.isStreaming) break;
 
         const lines = this.parseChunk(chunk);
@@ -136,7 +136,7 @@ class LogStreamTracker {
 export type ContainerStartedEvent = {
   sessionId: string;
   containerId: string;
-  dockerId: string;
+  runtimeId: string;
   hostname: string;
 };
 
@@ -165,7 +165,7 @@ export class LogMonitor {
         this.onContainerStarted({
           sessionId: container.sessionId,
           containerId: container.id,
-          dockerId: container.dockerId,
+          runtimeId: container.runtimeId,
           hostname: container.hostname,
         });
       }
@@ -175,7 +175,7 @@ export class LogMonitor {
   }
 
   onContainerStarted(event: ContainerStartedEvent): void {
-    const { sessionId, containerId, dockerId, hostname } = event;
+    const { sessionId, containerId, runtimeId, hostname } = event;
     const key = `${sessionId}:${containerId}`;
 
     if (this.trackers.has(key)) {
@@ -186,7 +186,7 @@ export class LogMonitor {
     const tracker = new LogStreamTracker(
       containerId,
       sessionId,
-      dockerId,
+      runtimeId,
       hostname,
       this.sandbox,
       () => this.deferredPublisher.get(),

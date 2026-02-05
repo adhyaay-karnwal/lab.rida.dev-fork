@@ -2,8 +2,8 @@ import type { ContainerEvent } from "@lab/sandbox-sdk";
 import { LABELS, TIMING } from "../config/constants";
 import { CONTAINER_STATUS, type ContainerStatus } from "../types/container";
 import {
-  findSessionContainerByDockerId,
-  findSessionContainerDetailsByDockerId,
+  findSessionContainerByRuntimeId,
+  findSessionContainerDetailsByRuntimeId,
   findAllActiveSessionContainers,
   updateSessionContainerStatus,
 } from "../repositories/container-session.repository";
@@ -60,7 +60,7 @@ export class ContainerMonitor {
       const activeContainers = await findAllActiveSessionContainers();
 
       for (const container of activeContainers) {
-        const isRunning = await this.sandbox.provider.containerExists(container.dockerId);
+        const isRunning = await this.sandbox.provider.containerExists(container.runtimeId);
         const actualStatus: ContainerStatus = isRunning
           ? CONTAINER_STATUS.RUNNING
           : CONTAINER_STATUS.STOPPED;
@@ -116,7 +116,7 @@ export class ContainerMonitor {
     const sessionId = event.attributes[LABELS.SESSION];
     if (!sessionId) return;
 
-    const sessionContainer = await findSessionContainerByDockerId(event.containerId);
+    const sessionContainer = await findSessionContainerByRuntimeId(event.containerId);
     if (!sessionContainer) return;
 
     await updateSessionContainerStatus(sessionContainer.id, status);
@@ -137,17 +137,17 @@ export class ContainerMonitor {
     if (!this.logMonitor) return;
 
     if (status === CONTAINER_STATUS.RUNNING) {
-      const details = await findSessionContainerDetailsByDockerId(event.containerId);
+      const details = await findSessionContainerDetailsByRuntimeId(event.containerId);
       if (details) {
         this.logMonitor.onContainerStarted({
           sessionId: details.sessionId,
           containerId: details.id,
-          dockerId: event.containerId,
+          runtimeId: event.containerId,
           hostname: details.hostname,
         });
       }
     } else if (status === CONTAINER_STATUS.STOPPED || status === CONTAINER_STATUS.ERROR) {
-      const details = await findSessionContainerDetailsByDockerId(event.containerId);
+      const details = await findSessionContainerDetailsByRuntimeId(event.containerId);
       if (details) {
         this.logMonitor.onContainerStopped({
           sessionId: details.sessionId,

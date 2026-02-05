@@ -8,7 +8,7 @@ interface SessionServicesResponse {
   proxyBaseDomain: string;
   services: {
     containerId: string;
-    dockerId: string;
+    runtimeId: string;
     image: string;
     status: string;
     ports: number[];
@@ -104,12 +104,12 @@ export function container(server: McpServer, { docker }: ToolContext) {
         return serviceNotFoundError(args.containerId, available);
       }
 
-      const exists = await docker.containerExists(service.dockerId);
+      const exists = await docker.containerExists(service.runtimeId);
       if (!exists) return containerNotRunningError(args.containerId);
 
       const lines = args.tail ?? 100;
       const logs: string[] = [];
-      for await (const chunk of docker.streamLogs(service.dockerId, { tail: lines })) {
+      for await (const chunk of docker.streamLogs(service.runtimeId, { tail: lines })) {
         const text = new TextDecoder().decode(chunk.data);
         logs.push(`[${chunk.stream}] ${text}`);
       }
@@ -138,11 +138,11 @@ export function container(server: McpServer, { docker }: ToolContext) {
         return serviceNotFoundError(args.containerId, available);
       }
 
-      const exists = await docker.containerExists(service.dockerId);
+      const exists = await docker.containerExists(service.runtimeId);
       if (!exists) return containerNotRunningError(args.containerId);
 
       const timeout = args.timeout ?? 10;
-      await docker.restartContainer(service.dockerId, timeout);
+      await docker.restartContainer(service.runtimeId, timeout);
 
       return textResult(`Successfully restarted container "${args.containerId}"`);
     },

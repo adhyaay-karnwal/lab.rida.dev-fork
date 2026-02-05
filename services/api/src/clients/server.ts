@@ -8,7 +8,7 @@ import { createOpenCodeProxyHandler } from "../opencode/handler";
 import { createChannelRestHandler } from "../snapshots/rest-handler";
 import type { PoolManager } from "../managers/pool.manager";
 import type { LogMonitor } from "../monitors/log.monitor";
-import { reconcileNetworkConnections, type NetworkContainerNames } from "../docker/network";
+import { reconcileNetworkConnections, type NetworkContainerNames } from "../runtime/network";
 import { isHttpMethod, isRouteModule } from "@lab/router";
 import type { RouteContext } from "../types/route";
 import { join } from "node:path";

@@ -1,8 +1,7 @@
-import { LABELS, VOLUMES } from "../config/constants";
-import { formatProjectName, formatContainerName, formatUniqueHostname } from "../shared/naming";
+import { formatContainerName, formatUniqueHostname } from "../shared/naming";
 import { findContainersWithDependencies } from "../repositories/container-dependency.repository";
 import {
-  updateSessionContainerDockerId,
+  updateSessionContainerRuntimeId,
   updateSessionContainersStatusBySessionId,
 } from "../repositories/container-session.repository";
 import { CircularDependencyError } from "@lab/sandbox-sdk";
@@ -22,7 +21,7 @@ import {
 import type { SessionCleanupService } from "../services/session-cleanup.service";
 import type { Sandbox, Publisher } from "../types/dependencies";
 import type { ProxyManager } from "../services/proxy.service";
-import { InternalError, NetworkError } from "../shared/errors";
+import { InternalError } from "../shared/errors";
 
 interface ClusterContainer {
   containerId: string;
@@ -32,7 +31,6 @@ interface ClusterContainer {
 
 export interface InitializeSessionContainersDeps {
   containerNames: NetworkContainerNames;
-  browserSocketVolume: string;
   sandbox: Sandbox;
   publisher: Publisher;
   proxyManager: ProxyManager;
@@ -44,91 +42,46 @@ async function createAndStartContainer(
   projectId: string,
   networkName: string,
   prepared: PreparedContainer,
-  deps: Pick<InitializeSessionContainersDeps, "sandbox" | "browserSocketVolume">,
-): Promise<{ dockerId: string; clusterContainer: ClusterContainer | null }> {
+  deps: Pick<InitializeSessionContainersDeps, "sandbox">,
+): Promise<{ runtimeId: string; clusterContainer: ClusterContainer | null }> {
   const { containerDefinition, ports, envVars, containerWorkspace } = prepared;
-  const { sandbox, browserSocketVolume } = deps;
-  const { provider } = sandbox;
+  const { sandbox } = deps;
 
   const env = buildEnvironmentVariables(sessionId, envVars);
   const serviceHostname = containerDefinition.hostname || containerDefinition.id;
   const uniqueHostname = formatUniqueHostname(sessionId, containerDefinition.id);
-  const projectName = formatProjectName(sessionId);
   const containerName = formatContainerName(sessionId, containerDefinition.id);
-
-  const containerVolumes = [
-    { source: VOLUMES.WORKSPACES_HOST_PATH, target: "/workspaces" },
-    { source: VOLUMES.OPENCODE_AUTH_HOST_PATH, target: VOLUMES.OPENCODE_AUTH_TARGET },
-    { source: browserSocketVolume, target: VOLUMES.BROWSER_SOCKET_DIR },
-  ];
-
-  console.log(`[Container] Creating ${containerDefinition.image} for session ${sessionId}`);
-  const dockerId = await provider.createContainer({
-    name: containerName,
-    image: containerDefinition.image,
-    hostname: uniqueHostname,
-    networkMode: networkName,
-    workdir: containerWorkspace,
-    env: Object.keys(env).length > 0 ? env : undefined,
-    ports: ports.map(({ port }) => ({ container: port, host: undefined })),
-    volumes: containerVolumes,
-    labels: {
-      "com.docker.compose.project": projectName,
-      "com.docker.compose.service": serviceHostname,
-      [LABELS.SESSION]: sessionId,
-      [LABELS.PROJECT]: projectId,
-      [LABELS.CONTAINER]: containerDefinition.id,
-    },
-    restartPolicy: {
-      name: "on-failure",
-      maximumRetryCount: 3,
-    },
-  });
-  console.log(`[Container] Created ${dockerId}, starting...`);
-
-  try {
-    await provider.startContainer(dockerId);
-  } catch (startError) {
-    console.error(`[Container] Failed to start ${dockerId}, cleaning up...`);
-    try {
-      await provider.removeContainer(dockerId);
-    } catch (removeError) {
-      console.error(`[Container] Failed to remove ${dockerId} after start failure:`, removeError);
-    }
-    throw startError;
-  }
-
-  await updateSessionContainerDockerId(sessionId, containerDefinition.id, dockerId);
-  console.log(`[Container] Started ${dockerId}`);
-
   const { portMap, networkAliases } = buildNetworkAliasesAndPortMap(
     sessionId,
     containerDefinition.id,
     ports,
   );
 
-  if (networkAliases.length > 0) {
-    const isConnected = await provider.isConnectedToNetwork(dockerId, networkName);
-    if (isConnected) {
-      await provider.disconnectFromNetwork(dockerId, networkName);
-    }
-    await provider.connectToNetwork(dockerId, networkName, { aliases: networkAliases });
+  console.log(`[Container] Creating ${containerDefinition.image} for session ${sessionId}`);
+  const { runtimeId } = await sandbox.runtime.startContainer({
+    sessionId,
+    projectId,
+    containerId: containerDefinition.id,
+    serviceName: serviceHostname,
+    containerName,
+    image: containerDefinition.image,
+    networkName,
+    hostname: uniqueHostname,
+    workdir: containerWorkspace,
+    env: Object.keys(env).length > 0 ? env : undefined,
+    ports: ports.map(({ port }) => port),
+    networkAliases,
+  });
+  console.log(`[Container] Created and started ${runtimeId}`);
 
-    const verifyConnected = await provider.isConnectedToNetwork(dockerId, networkName);
-    if (!verifyConnected) {
-      throw new NetworkError(
-        `Failed to connect container ${dockerId} to network ${networkName}`,
-        networkName,
-      );
-    }
-  }
+  await updateSessionContainerRuntimeId(sessionId, containerDefinition.id, runtimeId);
 
   const clusterContainer =
     Object.keys(portMap).length > 0
       ? { containerId: containerDefinition.id, hostname: uniqueHostname, ports: portMap }
       : null;
 
-  return { dockerId, clusterContainer };
+  return { runtimeId, clusterContainer };
 }
 
 async function startContainersInLevel(
@@ -137,9 +90,9 @@ async function startContainersInLevel(
   networkName: string,
   containerIds: string[],
   preparedByContainerId: Map<string, PreparedContainer>,
-  deps: Pick<InitializeSessionContainersDeps, "sandbox" | "browserSocketVolume">,
-): Promise<{ dockerIds: string[]; clusterContainers: ClusterContainer[] }> {
-  const levelDockerIds: string[] = [];
+  deps: Pick<InitializeSessionContainersDeps, "sandbox">,
+): Promise<{ runtimeIds: string[]; clusterContainers: ClusterContainer[] }> {
+  const levelRuntimeIds: string[] = [];
   const levelClusterContainers: ClusterContainer[] = [];
 
   const results = await Promise.all(
@@ -156,13 +109,13 @@ async function startContainersInLevel(
   );
 
   for (const result of results) {
-    levelDockerIds.push(result.dockerId);
+    levelRuntimeIds.push(result.runtimeId);
     if (result.clusterContainer) {
       levelClusterContainers.push(result.clusterContainer);
     }
   }
 
-  return { dockerIds: levelDockerIds, clusterContainers: levelClusterContainers };
+  return { runtimeIds: levelRuntimeIds, clusterContainers: levelClusterContainers };
 }
 
 export async function initializeSessionContainers(
@@ -174,7 +127,7 @@ export async function initializeSessionContainers(
   const { containerNames, sandbox, proxyManager, cleanupService } = deps;
 
   const containerDefinitions = await findContainersWithDependencies(projectId);
-  const dockerIds: string[] = [];
+  const runtimeIds: string[] = [];
   const clusterContainers: ClusterContainer[] = [];
 
   try {
@@ -203,7 +156,7 @@ export async function initializeSessionContainers(
         preparedByContainerId,
         deps,
       );
-      dockerIds.push(...levelResult.dockerIds);
+      runtimeIds.push(...levelResult.runtimeIds);
       clusterContainers.push(...levelResult.clusterContainers);
     }
 
@@ -214,7 +167,7 @@ export async function initializeSessionContainers(
     const session = await findSessionById(sessionId);
     if (!session || session.status === SESSION_STATUS.DELETING) {
       console.log(`Session ${sessionId} was deleted during initialization, cleaning up`);
-      await cleanupService.cleanupOrphanedResources(sessionId, dockerIds, browserService);
+      await cleanupService.cleanupOrphanedResources(sessionId, runtimeIds, browserService);
       return;
     }
   } catch (error) {
@@ -222,14 +175,14 @@ export async function initializeSessionContainers(
       console.error(`Circular dependency in project ${projectId}: ${error.cycle.join(" -> ")}`);
     }
     console.error(`Failed to initialize session ${sessionId}:`, error);
-    await handleInitializationError(sessionId, projectId, dockerIds, browserService, deps);
+    await handleInitializationError(sessionId, projectId, runtimeIds, browserService, deps);
   }
 }
 
 async function handleInitializationError(
   sessionId: string,
   projectId: string,
-  dockerIds: string[],
+  runtimeIds: string[],
   browserService: BrowserService,
   deps: Pick<InitializeSessionContainersDeps, "publisher" | "cleanupService">,
 ): Promise<void> {
@@ -246,5 +199,5 @@ async function handleInitializationError(
     );
   }
 
-  await deps.cleanupService.cleanupOnError(sessionId, projectId, dockerIds, browserService);
+  await deps.cleanupService.cleanupOnError(sessionId, projectId, runtimeIds, browserService);
 }

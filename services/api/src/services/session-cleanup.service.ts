@@ -11,7 +11,7 @@ import type { Sandbox, Publisher } from "../types/dependencies";
 import type { ProxyManager } from "./proxy.service";
 
 interface ContainerCleanupResult {
-  dockerId: string;
+  runtimeId: string;
   success: boolean;
   stillExists: boolean;
   error?: unknown;
@@ -45,9 +45,9 @@ export class SessionCleanupService {
     });
 
     const containers = await findSessionContainersBySessionId(sessionId);
-    const dockerIds = containers.filter((c) => c.dockerId).map((c) => c.dockerId);
+    const runtimeIds = containers.filter((c) => c.runtimeId).map((c) => c.runtimeId);
 
-    await this.stopAndRemoveContainers(dockerIds, sandbox.provider, sessionId);
+    await this.stopAndRemoveContainers(runtimeIds, sandbox.provider, sessionId);
     await browserService.forceStopBrowser(sessionId);
 
     try {
@@ -71,12 +71,12 @@ export class SessionCleanupService {
 
   async cleanupOrphanedResources(
     sessionId: string,
-    dockerIds: string[],
+    runtimeIds: string[],
     browserService: BrowserService,
   ): Promise<void> {
     const { sandbox, proxyManager, cleanupSessionNetwork } = this.deps;
 
-    await this.stopAndRemoveContainers(dockerIds, sandbox.provider, sessionId);
+    await this.stopAndRemoveContainers(runtimeIds, sandbox.provider, sessionId);
     await browserService.forceStopBrowser(sessionId);
 
     try {
@@ -98,7 +98,7 @@ export class SessionCleanupService {
   async cleanupOnError(
     sessionId: string,
     projectId: string,
-    dockerIds: string[],
+    runtimeIds: string[],
     browserService: BrowserService,
   ): Promise<void> {
     const { sandbox, publisher, cleanupSessionNetwork } = this.deps;
@@ -110,7 +110,7 @@ export class SessionCleanupService {
       session: { id: sessionId, projectId, title: null },
     });
 
-    await this.stopAndRemoveContainers(dockerIds, sandbox.provider, sessionId);
+    await this.stopAndRemoveContainers(runtimeIds, sandbox.provider, sessionId);
     await browserService.forceStopBrowser(sessionId);
 
     try {
@@ -123,19 +123,19 @@ export class SessionCleanupService {
   }
 
   private async stopAndRemoveContainers(
-    dockerIds: string[],
+    runtimeIds: string[],
     provider: Sandbox["provider"],
     sessionId: string,
   ): Promise<void> {
     const cleanupResults = await Promise.allSettled(
-      dockerIds.map(async (dockerId) => {
+      runtimeIds.map(async (runtimeId) => {
         try {
-          await provider.stopContainer(dockerId);
-          await provider.removeContainer(dockerId);
-          const stillExists = await provider.containerExists(dockerId);
-          return { dockerId, success: !stillExists, stillExists };
+          await provider.stopContainer(runtimeId);
+          await provider.removeContainer(runtimeId);
+          const stillExists = await provider.containerExists(runtimeId);
+          return { runtimeId, success: !stillExists, stillExists };
         } catch (error) {
-          return { dockerId, success: false, stillExists: true, error };
+          return { runtimeId, success: false, stillExists: true, error };
         }
       }),
     );
@@ -156,12 +156,12 @@ export class SessionCleanupService {
     for (const failure of failures) {
       if (failure.error) {
         console.error(
-          `[SessionCleanup] Failed to cleanup container dockerId=${failure.dockerId} sessionId=${sessionId}:`,
+          `[SessionCleanup] Failed to cleanup container runtimeId=${failure.runtimeId} sessionId=${sessionId}:`,
           failure.error,
         );
       } else if (failure.stillExists) {
         console.error(
-          `[SessionCleanup] Container dockerId=${failure.dockerId} still exists after cleanup sessionId=${sessionId}`,
+          `[SessionCleanup] Container runtimeId=${failure.runtimeId} still exists after cleanup sessionId=${sessionId}`,
         );
       }
     }

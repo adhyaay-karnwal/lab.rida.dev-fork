@@ -15,7 +15,7 @@ const GET = withParams<{ sessionId: string }, ProxyContext>(
       proxyBaseDomain: ctx.proxyBaseDomain,
       services: services.map((service) => ({
         containerId: service.containerId,
-        dockerId: service.dockerId,
+        runtimeId: service.runtimeId,
         image: service.image,
         status: service.status,
         ports: service.ports,

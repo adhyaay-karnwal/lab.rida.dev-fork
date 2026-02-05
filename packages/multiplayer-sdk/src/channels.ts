@@ -12,7 +12,7 @@ const ReviewableFileSchema = z.object({
 const LogSourceSchema = z.object({
   id: z.string(),
   hostname: z.string(),
-  dockerId: z.string(),
+  runtimeId: z.string(),
   status: z.enum(["streaming", "stopped", "error"]),
 });
 
