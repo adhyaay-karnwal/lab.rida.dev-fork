@@ -34,7 +34,7 @@ async function resolveUpstream(sessionId: string, port: number): Promise<Upstrea
     .limit(1);
 
   const row = result[0];
-  if (!row || row.sessionStatus !== "running") {
+  if (!row || (row.sessionStatus !== "running" && row.sessionStatus !== "pooled")) {
     return null;
   }
 
