@@ -4,30 +4,32 @@ import {
   PutBucketPolicyCommand,
   HeadBucketCommand,
 } from "@aws-sdk/client-s3";
-import { config } from "../config/environment";
+import { S3 } from "../config/constants";
+import { logger } from "../logging";
+import type { Config } from "../types/tool";
 
-function createS3Client(): S3Client {
+function createS3Client(config: Config): S3Client {
   return new S3Client({
-    endpoint: config.rustfs.endpoint,
-    region: "us-east-1",
+    endpoint: config.RUSTFS_ENDPOINT,
+    region: S3.REGION,
     credentials: {
-      accessKeyId: config.rustfs.accessKey,
-      secretAccessKey: config.rustfs.secretKey,
+      accessKeyId: config.RUSTFS_ACCESS_KEY,
+      secretAccessKey: config.RUSTFS_SECRET_KEY,
     },
     forcePathStyle: true,
   });
 }
 
-export async function initializeBucket(): Promise<void> {
-  const s3 = createS3Client();
-  const bucket = config.rustfs.bucket;
+export async function initializeBucket(config: Config): Promise<void> {
+  const s3 = createS3Client(config);
+  const bucket = config.RUSTFS_BUCKET;
 
   try {
     await s3.send(new HeadBucketCommand({ Bucket: bucket }));
-    console.log(`[RustFS] Bucket "${bucket}" already exists`);
+    logger.info({ event_name: "rustfs.bucket_exists", bucket });
   } catch (error: unknown) {
     if (error && typeof error === "object" && "name" in error && error.name === "NotFound") {
-      console.log(`[RustFS] Creating bucket "${bucket}"...`);
+      logger.info({ event_name: "rustfs.bucket_creating", bucket });
       await s3.send(new CreateBucketCommand({ Bucket: bucket }));
     } else {
       throw error;
@@ -53,5 +55,5 @@ export async function initializeBucket(): Promise<void> {
     }),
   );
 
-  console.log(`[RustFS] Bucket "${bucket}" initialized with public read policy`);
+  logger.info({ event_name: "rustfs.bucket_initialized", bucket });
 }

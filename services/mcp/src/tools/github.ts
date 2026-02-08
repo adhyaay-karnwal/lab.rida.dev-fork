@@ -1,7 +1,6 @@
 import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import type { ToolContext } from "../types/tool";
-import { config } from "../config/environment";
 import {
   createHierarchicalTool,
   type CommandNode,
@@ -17,12 +16,6 @@ interface ApiResult<T> {
   ok: boolean;
   status: number;
   data: T;
-}
-
-async function getGitHubCredentials(): Promise<GitHubCredentials | null> {
-  const response = await fetch(`${config.apiBaseUrl}/internal/github/credentials`);
-  if (!response.ok) return null;
-  return response.json();
 }
 
 async function githubApi<T>(
@@ -119,241 +112,251 @@ function formatCheckRuns(
   return lines;
 }
 
-const githubTree: Record<string, CommandNode> = {
-  pr: {
-    description: "Pull request operations",
-    children: {
-      create: {
-        description: "Create a pull request",
-        params: {
-          owner: z.string().describe("Repository owner"),
-          repo: z.string().describe("Repository name"),
-          title: z.string().describe("PR title"),
-          body: z.string().optional().describe("PR description"),
-          head: z.string().describe("Branch with changes"),
-          base: z.string().describe("Target branch (e.g., 'main')"),
-          draft: z.boolean().optional().describe("Create as draft"),
-        },
-        handler: async (args) => {
-          const credentials = await getGitHubCredentials();
-          if (!credentials) return notConfiguredError();
+export function github(server: McpServer, { config }: ToolContext) {
+  async function getGitHubCredentials(): Promise<GitHubCredentials | null> {
+    const response = await fetch(`${config.API_BASE_URL}/internal/github/credentials`);
+    if (!response.ok) return null;
+    return response.json();
+  }
 
-          const result = await githubApi<{ html_url: string; number: number }>(
-            credentials.token,
-            "POST",
-            `/repos/${args.owner}/${args.repo}/pulls`,
-            {
-              title: args.title,
-              body: args.body,
-              head: args.head,
-              base: args.base,
-              draft: args.draft,
-            },
-          );
+  const githubTree: Record<string, CommandNode> = {
+    pr: {
+      description: "Pull request operations",
+      children: {
+        create: {
+          description: "Create a pull request",
+          params: {
+            owner: z.string().describe("Repository owner"),
+            repo: z.string().describe("Repository name"),
+            title: z.string().describe("PR title"),
+            body: z.string().optional().describe("PR description"),
+            head: z.string().describe("Branch with changes"),
+            base: z.string().describe("Target branch (e.g., 'main')"),
+            draft: z.boolean().optional().describe("Create as draft"),
+          },
+          handler: async (args) => {
+            const credentials = await getGitHubCredentials();
+            if (!credentials) return notConfiguredError();
 
-          if (!result.ok) {
-            return errorResult(`Error creating PR: ${JSON.stringify(result.data)}`);
-          }
-
-          return textResult(`PR #${result.data.number} created: ${result.data.html_url}`);
-        },
-      },
-      list: {
-        description: "List pull requests",
-        params: {
-          owner: z.string().describe("Repository owner"),
-          repo: z.string().describe("Repository name"),
-          state: z.enum(["open", "closed", "all"]).optional().describe("Filter by state"),
-        },
-        handler: async (args) => {
-          const credentials = await getGitHubCredentials();
-          if (!credentials) return notConfiguredError();
-
-          const state = args.state || "open";
-          const result = await githubApi<
-            { number: number; title: string; html_url: string; state: string }[]
-          >(credentials.token, "GET", `/repos/${args.owner}/${args.repo}/pulls?state=${state}`);
-
-          if (!result.ok) {
-            return errorResult(`Error listing PRs: ${JSON.stringify(result.data)}`);
-          }
-
-          if (result.data.length === 0) {
-            return textResult("No pull requests found.");
-          }
-
-          const list = result.data
-            .map((pr) => `#${pr.number}: ${pr.title} (${pr.state})\n  ${pr.html_url}`)
-            .join("\n\n");
-
-          return textResult(list);
-        },
-      },
-      comments: {
-        description: "Get PR reviews and comments",
-        params: {
-          owner: z.string().describe("Repository owner"),
-          repo: z.string().describe("Repository name"),
-          number: z.number().describe("PR number"),
-        },
-        handler: async (args) => {
-          const credentials = await getGitHubCredentials();
-          if (!credentials) return notConfiguredError();
-
-          const [reviewsResult, commentsResult] = await Promise.all([
-            githubApi<{ user: { login: string }; state: string; body: string }[]>(
+            const result = await githubApi<{ html_url: string; number: number }>(
               credentials.token,
-              "GET",
-              `/repos/${args.owner}/${args.repo}/pulls/${args.number}/reviews`,
-            ),
-            githubApi<
-              { user: { login: string }; body: string; path: string; line: number | null }[]
-            >(
+              "POST",
+              `/repos/${args.owner}/${args.repo}/pulls`,
+              {
+                title: args.title,
+                body: args.body,
+                head: args.head,
+                base: args.base,
+                draft: args.draft,
+              },
+            );
+
+            if (!result.ok) {
+              return errorResult(`Error creating PR: ${JSON.stringify(result.data)}`);
+            }
+
+            return textResult(`PR #${result.data.number} created: ${result.data.html_url}`);
+          },
+        },
+        list: {
+          description: "List pull requests",
+          params: {
+            owner: z.string().describe("Repository owner"),
+            repo: z.string().describe("Repository name"),
+            state: z.enum(["open", "closed", "all"]).optional().describe("Filter by state"),
+          },
+          handler: async (args) => {
+            const credentials = await getGitHubCredentials();
+            if (!credentials) return notConfiguredError();
+
+            const state = args.state || "open";
+            const result = await githubApi<
+              { number: number; title: string; html_url: string; state: string }[]
+            >(credentials.token, "GET", `/repos/${args.owner}/${args.repo}/pulls?state=${state}`);
+
+            if (!result.ok) {
+              return errorResult(`Error listing PRs: ${JSON.stringify(result.data)}`);
+            }
+
+            if (result.data.length === 0) {
+              return textResult("No pull requests found.");
+            }
+
+            const list = result.data
+              .map((pr) => `#${pr.number}: ${pr.title} (${pr.state})\n  ${pr.html_url}`)
+              .join("\n\n");
+
+            return textResult(list);
+          },
+        },
+        comments: {
+          description: "Get PR reviews and comments",
+          params: {
+            owner: z.string().describe("Repository owner"),
+            repo: z.string().describe("Repository name"),
+            number: z.number().describe("PR number"),
+          },
+          handler: async (args) => {
+            const credentials = await getGitHubCredentials();
+            if (!credentials) return notConfiguredError();
+
+            const [reviewsResult, commentsResult] = await Promise.all([
+              githubApi<{ user: { login: string }; state: string; body: string }[]>(
+                credentials.token,
+                "GET",
+                `/repos/${args.owner}/${args.repo}/pulls/${args.number}/reviews`,
+              ),
+              githubApi<
+                { user: { login: string }; body: string; path: string; line: number | null }[]
+              >(
+                credentials.token,
+                "GET",
+                `/repos/${args.owner}/${args.repo}/pulls/${args.number}/comments`,
+              ),
+            ]);
+
+            if (!reviewsResult.ok || !commentsResult.ok) {
+              const errorData = reviewsResult.ok ? commentsResult.data : reviewsResult.data;
+              return errorResult(`Error fetching PR feedback: ${JSON.stringify(errorData)}`);
+            }
+
+            const parts = [
+              ...formatReviews(reviewsResult.data),
+              ...formatInlineComments(commentsResult.data),
+            ];
+
+            if (parts.length === 0) {
+              return textResult("No reviews or comments on this PR.");
+            }
+
+            return textResult(parts.join("\n"));
+          },
+        },
+      },
+    },
+    issue: {
+      description: "Issue operations",
+      children: {
+        create: {
+          description: "Create an issue",
+          params: {
+            owner: z.string().describe("Repository owner"),
+            repo: z.string().describe("Repository name"),
+            title: z.string().describe("Issue title"),
+            body: z.string().optional().describe("Issue description"),
+            labels: z.array(z.string()).optional().describe("Labels to add"),
+          },
+          handler: async (args) => {
+            const credentials = await getGitHubCredentials();
+            if (!credentials) return notConfiguredError();
+
+            const result = await githubApi<{ html_url: string; number: number }>(
               credentials.token,
-              "GET",
-              `/repos/${args.owner}/${args.repo}/pulls/${args.number}/comments`,
-            ),
-          ]);
+              "POST",
+              `/repos/${args.owner}/${args.repo}/issues`,
+              {
+                title: args.title,
+                body: args.body,
+                labels: args.labels,
+              },
+            );
 
-          if (!reviewsResult.ok || !commentsResult.ok) {
-            const errorData = reviewsResult.ok ? commentsResult.data : reviewsResult.data;
-            return errorResult(`Error fetching PR feedback: ${JSON.stringify(errorData)}`);
-          }
+            if (!result.ok) {
+              return errorResult(`Error creating issue: ${JSON.stringify(result.data)}`);
+            }
 
-          const parts = [
-            ...formatReviews(reviewsResult.data),
-            ...formatInlineComments(commentsResult.data),
-          ];
-
-          if (parts.length === 0) {
-            return textResult("No reviews or comments on this PR.");
-          }
-
-          return textResult(parts.join("\n"));
+            return textResult(`Issue #${result.data.number} created: ${result.data.html_url}`);
+          },
         },
       },
     },
-  },
-  issue: {
-    description: "Issue operations",
-    children: {
-      create: {
-        description: "Create an issue",
-        params: {
-          owner: z.string().describe("Repository owner"),
-          repo: z.string().describe("Repository name"),
-          title: z.string().describe("Issue title"),
-          body: z.string().optional().describe("Issue description"),
-          labels: z.array(z.string()).optional().describe("Labels to add"),
-        },
-        handler: async (args) => {
-          const credentials = await getGitHubCredentials();
-          if (!credentials) return notConfiguredError();
-
-          const result = await githubApi<{ html_url: string; number: number }>(
-            credentials.token,
-            "POST",
-            `/repos/${args.owner}/${args.repo}/issues`,
-            {
-              title: args.title,
-              body: args.body,
-              labels: args.labels,
-            },
-          );
-
-          if (!result.ok) {
-            return errorResult(`Error creating issue: ${JSON.stringify(result.data)}`);
-          }
-
-          return textResult(`Issue #${result.data.number} created: ${result.data.html_url}`);
-        },
+    repo: {
+      description: "Get repository info",
+      params: {
+        owner: z.string().describe("Repository owner"),
+        repo: z.string().describe("Repository name"),
       },
-    },
-  },
-  repo: {
-    description: "Get repository info",
-    params: {
-      owner: z.string().describe("Repository owner"),
-      repo: z.string().describe("Repository name"),
-    },
-    handler: async (args) => {
-      const credentials = await getGitHubCredentials();
-      if (!credentials) return notConfiguredError();
+      handler: async (args) => {
+        const credentials = await getGitHubCredentials();
+        if (!credentials) return notConfiguredError();
 
-      const result = await githubApi<{
-        full_name: string;
-        description: string;
-        default_branch: string;
-        html_url: string;
-        private: boolean;
-      }>(credentials.token, "GET", `/repos/${args.owner}/${args.repo}`);
+        const result = await githubApi<{
+          full_name: string;
+          description: string;
+          default_branch: string;
+          html_url: string;
+          private: boolean;
+        }>(credentials.token, "GET", `/repos/${args.owner}/${args.repo}`);
 
-      if (!result.ok) {
-        return errorResult(`Error fetching repo: ${JSON.stringify(result.data)}`);
-      }
-
-      const repo = result.data;
-      const visibility = repo.private ? " (private)" : "";
-      const description = repo.description || "(no description)";
-
-      return textResult(
-        `${repo.full_name}${visibility}\n${description}\nDefault branch: ${repo.default_branch}\n${repo.html_url}`,
-      );
-    },
-  },
-  status: {
-    description: "Get CI status for a commit or PR",
-    params: {
-      owner: z.string().describe("Repository owner"),
-      repo: z.string().describe("Repository name"),
-      ref: z.string().describe("Commit SHA, branch, or 'pr:NUMBER'"),
-    },
-    handler: async (args) => {
-      const credentials = await getGitHubCredentials();
-      if (!credentials) return notConfiguredError();
-
-      let ref = args.ref as string;
-
-      if (ref.startsWith("pr:")) {
-        const prNumber = ref.slice(3);
-        const prResult = await githubApi<{ head: { sha: string } }>(
-          credentials.token,
-          "GET",
-          `/repos/${args.owner}/${args.repo}/pulls/${prNumber}`,
-        );
-        if (!prResult.ok) {
-          return errorResult(`Error fetching PR: ${JSON.stringify(prResult.data)}`);
+        if (!result.ok) {
+          return errorResult(`Error fetching repo: ${JSON.stringify(result.data)}`);
         }
-        ref = prResult.data.head.sha;
-      }
 
-      const [statusResult, checksResult] = await Promise.all([
-        githubApi<{
-          state: string;
-          statuses: { context: string; state: string; description: string }[];
-        }>(credentials.token, "GET", `/repos/${args.owner}/${args.repo}/commits/${ref}/status`),
-        githubApi<{
-          check_runs: { name: string; status: string; conclusion: string | null }[];
-        }>(credentials.token, "GET", `/repos/${args.owner}/${args.repo}/commits/${ref}/check-runs`),
-      ]);
+        const repo = result.data;
+        const visibility = repo.private ? " (private)" : "";
+        const description = repo.description || "(no description)";
 
-      const parts = [`## Status for ${ref.slice(0, 7)}\n`];
-
-      if (statusResult.ok) {
-        parts.push(`Overall: **${statusResult.data.state}**\n`);
-        parts.push(...formatCommitStatuses(statusResult.data.statuses));
-      }
-
-      if (checksResult.ok) {
-        parts.push(...formatCheckRuns(checksResult.data.check_runs));
-      }
-
-      return textResult(parts.join("\n"));
+        return textResult(
+          `${repo.full_name}${visibility}\n${description}\nDefault branch: ${repo.default_branch}\n${repo.html_url}`,
+        );
+      },
     },
-  },
-};
+    status: {
+      description: "Get CI status for a commit or PR",
+      params: {
+        owner: z.string().describe("Repository owner"),
+        repo: z.string().describe("Repository name"),
+        ref: z.string().describe("Commit SHA, branch, or 'pr:NUMBER'"),
+      },
+      handler: async (args) => {
+        const credentials = await getGitHubCredentials();
+        if (!credentials) return notConfiguredError();
 
-export function github(server: McpServer, _context: ToolContext) {
+        let ref = args.ref as string;
+
+        if (ref.startsWith("pr:")) {
+          const prNumber = ref.slice(3);
+          const prResult = await githubApi<{ head: { sha: string } }>(
+            credentials.token,
+            "GET",
+            `/repos/${args.owner}/${args.repo}/pulls/${prNumber}`,
+          );
+          if (!prResult.ok) {
+            return errorResult(`Error fetching PR: ${JSON.stringify(prResult.data)}`);
+          }
+          ref = prResult.data.head.sha;
+        }
+
+        const [statusResult, checksResult] = await Promise.all([
+          githubApi<{
+            state: string;
+            statuses: { context: string; state: string; description: string }[];
+          }>(credentials.token, "GET", `/repos/${args.owner}/${args.repo}/commits/${ref}/status`),
+          githubApi<{
+            check_runs: { name: string; status: string; conclusion: string | null }[];
+          }>(
+            credentials.token,
+            "GET",
+            `/repos/${args.owner}/${args.repo}/commits/${ref}/check-runs`,
+          ),
+        ]);
+
+        const parts = [`## Status for ${ref.slice(0, 7)}\n`];
+
+        if (statusResult.ok) {
+          parts.push(`Overall: **${statusResult.data.state}**\n`);
+          parts.push(...formatCommitStatuses(statusResult.data.statuses));
+        }
+
+        if (checksResult.ok) {
+          parts.push(...formatCheckRuns(checksResult.data.check_runs));
+        }
+
+        return textResult(parts.join("\n"));
+      },
+    },
+  };
+
   createHierarchicalTool(server, {
     name: "gh",
     description: "GitHub operations (PRs, issues, repo info, CI status)",

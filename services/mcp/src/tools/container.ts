@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import type { DockerClient } from "@lab/sandbox-docker";
 import { z } from "zod/v4";
 import type { ToolContext } from "../types/tool";
-import { config } from "../config/environment";
 
 interface SessionServicesResponse {
   sessionId: string;
@@ -22,8 +21,11 @@ interface ToolResult {
   content: { type: "text"; text: string }[];
 }
 
-async function getSessionServices(sessionId: string): Promise<SessionServicesResponse | null> {
-  const response = await fetch(`${config.apiBaseUrl}/internal/sessions/${sessionId}/services`);
+async function getSessionServices(
+  apiBaseUrl: string,
+  sessionId: string,
+): Promise<SessionServicesResponse | null> {
+  const response = await fetch(`${apiBaseUrl}/internal/sessions/${sessionId}/services`);
   if (!response.ok) return null;
   return response.json();
 }
@@ -79,7 +81,7 @@ async function ensureSharedContainerConnected(
   await docker.connectToNetwork(containerName, networkName);
 }
 
-export function container(server: McpServer, { docker }: ToolContext) {
+export function container(server: McpServer, { docker, config }: ToolContext) {
   server.registerTool(
     "containers",
     {
@@ -90,7 +92,7 @@ export function container(server: McpServer, { docker }: ToolContext) {
       },
     },
     async (args) => {
-      const data = await getSessionServices(args.sessionId);
+      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
       if (!data) return sessionNotFoundError(args.sessionId);
 
       if (data.services.length === 0) {
@@ -119,7 +121,7 @@ export function container(server: McpServer, { docker }: ToolContext) {
       },
     },
     async (args) => {
-      const data = await getSessionServices(args.sessionId);
+      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
       if (!data) return sessionNotFoundError(args.sessionId);
 
       const service = data.services.find((candidate) => candidate.containerId === args.containerId);
@@ -153,7 +155,7 @@ export function container(server: McpServer, { docker }: ToolContext) {
       },
     },
     async (args) => {
-      const data = await getSessionServices(args.sessionId);
+      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
       if (!data) return sessionNotFoundError(args.sessionId);
 
       const service = data.services.find((candidate) => candidate.containerId === args.containerId);
@@ -183,7 +185,7 @@ export function container(server: McpServer, { docker }: ToolContext) {
       },
     },
     async (args) => {
-      const data = await getSessionServices(args.sessionId);
+      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
       if (!data) return sessionNotFoundError(args.sessionId);
 
       const service = data.services.find(({ ports }) => ports.includes(args.port));
@@ -193,7 +195,7 @@ export function container(server: McpServer, { docker }: ToolContext) {
       }
 
       try {
-        await ensureSharedContainerConnected(docker, args.sessionId, config.browserContainerName);
+        await ensureSharedContainerConnected(docker, args.sessionId, config.BROWSER_CONTAINER_NAME);
       } catch (error) {
         const message = error instanceof Error ? error.message : String(error);
         return errorResult(
@@ -220,7 +222,7 @@ export function container(server: McpServer, { docker }: ToolContext) {
       },
     },
     async (args) => {
-      const data = await getSessionServices(args.sessionId);
+      const data = await getSessionServices(config.API_BASE_URL, args.sessionId);
       if (!data) return sessionNotFoundError(args.sessionId);
 
       const service = data.services.find(({ ports }) => ports.includes(args.port));

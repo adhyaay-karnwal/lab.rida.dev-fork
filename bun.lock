@@ -384,9 +384,13 @@
       "dependencies": {
         "@aws-sdk/client-s3": "^3.500.0",
         "@lab/browser-protocol": "workspace:*",
+        "@lab/entry-point": "workspace:*",
         "@lab/sandbox-docker": "workspace:*",
         "@modelcontextprotocol/sdk": "^1.25.0",
         "@types/shell-quote": "^1.7.5",
+        "arktype": "^2.1.29",
+        "pino": "^10.3.0",
+        "pino-pretty": "^13.1.3",
         "shell-quote": "^1.8.3",
         "zod": "^4.3.6",
       },

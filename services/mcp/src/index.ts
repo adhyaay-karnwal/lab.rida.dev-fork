@@ -1,37 +1,6 @@
-import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
-import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
-import { DockerClient } from "@lab/sandbox-docker";
-import { config } from "./config/environment";
-import { makeRegisterTool } from "./tools/register";
-import { bash } from "./tools/bash";
-import { browser } from "./tools/browser";
-import { container } from "./tools/container";
-import { github } from "./tools/github";
-import { initializeBucket } from "./utils/rustfs";
+import { entry } from "@lab/entry-point";
+import { env } from "./env";
+import { setup } from "./setup";
+import { main } from "./main";
 
-await initializeBucket();
-
-const docker = new DockerClient();
-
-const server = new McpServer({
-  name: "lab-containers",
-  version: "1.0.0",
-});
-
-const { registerTool } = makeRegisterTool(server, docker);
-
-registerTool(bash);
-registerTool(browser);
-registerTool(container);
-registerTool(github);
-
-const transport = new WebStandardStreamableHTTPServerTransport();
-
-await server.connect(transport);
-
-Bun.serve({
-  port: config.port,
-  fetch: (request) => transport.handleRequest(request),
-});
-
-console.log(`MCP server running on http://localhost:${config.port}`);
+entry({ name: "mcp", env, setup, main });

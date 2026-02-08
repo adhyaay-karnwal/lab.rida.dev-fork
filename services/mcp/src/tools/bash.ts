@@ -2,7 +2,6 @@ import type { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { z } from "zod/v4";
 import { parse } from "shell-quote";
 import type { ToolContext } from "../types/tool";
-import { config } from "../config/environment";
 
 interface WorkspaceContainerResponse {
   runtimeId: string;
@@ -10,11 +9,10 @@ interface WorkspaceContainerResponse {
 }
 
 async function getWorkspaceContainer(
+  apiBaseUrl: string,
   sessionId: string,
 ): Promise<WorkspaceContainerResponse | null> {
-  const response = await fetch(
-    `${config.apiBaseUrl}/internal/sessions/${sessionId}/workspace-container`,
-  );
+  const response = await fetch(`${apiBaseUrl}/internal/sessions/${sessionId}/workspace-container`);
   if (!response.ok) return null;
   return response.json();
 }
@@ -62,7 +60,7 @@ function findBlockedCommand(command: string): BlockedCommand | null {
   return null;
 }
 
-export function bash(server: McpServer, { docker }: ToolContext) {
+export function bash(server: McpServer, { docker, config }: ToolContext) {
   server.registerTool(
     "bash",
     {
@@ -87,7 +85,7 @@ export function bash(server: McpServer, { docker }: ToolContext) {
         };
       }
 
-      const workspace = await getWorkspaceContainer(args.sessionId);
+      const workspace = await getWorkspaceContainer(config.API_BASE_URL, args.sessionId);
       if (!workspace) {
         return {
           isError: true,
