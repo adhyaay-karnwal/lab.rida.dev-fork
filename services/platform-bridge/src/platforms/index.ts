@@ -14,5 +14,3 @@ export function getAdapter(platform: PlatformType): PlatformAdapter | undefined 
 export function getAllAdapters(): PlatformAdapter[] {
   return Array.from(adapters.values());
 }
-
-export { type PlatformAdapter, type MessageHandler } from "./types";

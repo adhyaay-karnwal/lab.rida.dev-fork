@@ -24,14 +24,6 @@ type OrchestrationContextValue = {
 
 const OrchestrationContext = createContext<OrchestrationContextValue | null>(null);
 
-function useOrchestration() {
-  const context = use(OrchestrationContext);
-  if (!context) {
-    throw new Error("useOrchestration must be used within Orchestration.Provider");
-  }
-  return context.actions;
-}
-
 function useOrchestrationItems() {
   const context = use(OrchestrationContext);
   if (!context) {
@@ -112,4 +104,4 @@ const Orchestration = {
   Indicator: OrchestrationIndicator,
 };
 
-export { Orchestration, useOrchestration, useOrchestrationItems, type OrchestrationStatus };
+export { Orchestration };

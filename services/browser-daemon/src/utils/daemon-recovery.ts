@@ -3,7 +3,7 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import type { DaemonSession } from "../types/daemon";
 import { widelog } from "../logging";
 
-export interface RecoveryCallbacks {
+interface RecoveryCallbacks {
   onRecover: (sessionId: string, streamPort: number, cdpPort?: number) => void;
 }
 

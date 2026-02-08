@@ -96,14 +96,6 @@ export async function deleteSession(sessionId: string): Promise<void> {
   await db.delete(sessions).where(eq(sessions.id, sessionId));
 }
 
-export async function getAllSessionsWithOpencodeId(): Promise<
-  { id: string; opencodeSessionId: string | null }[]
-> {
-  return db
-    .select({ id: sessions.id, opencodeSessionId: sessions.opencodeSessionId })
-    .from(sessions);
-}
-
 export async function findAllSessionSummaries(): Promise<
   { id: string; projectId: string; title: string | null }[]
 > {
@@ -111,15 +103,6 @@ export async function findAllSessionSummaries(): Promise<
     .select({ id: sessions.id, projectId: sessions.projectId, title: sessions.title })
     .from(sessions)
     .where(and(...visibleSessionConditions));
-}
-
-export async function getSessionOpencodeId(sessionId: string): Promise<string | null> {
-  const [session] = await db
-    .select({ opencodeSessionId: sessions.opencodeSessionId })
-    .from(sessions)
-    .where(eq(sessions.id, sessionId))
-    .limit(1);
-  return session?.opencodeSessionId ?? null;
 }
 
 export async function findRunningSessions(): Promise<{ id: string }[]> {

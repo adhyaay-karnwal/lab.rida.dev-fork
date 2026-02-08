@@ -11,13 +11,13 @@ import type { OpencodeClient } from "../types/dependencies";
 import { MESSAGE_ROLE } from "../types/message";
 import { widelog } from "../logging";
 
-export interface TaskSummary {
+interface TaskSummary {
   success: boolean;
   outcome: string;
   summary: string;
 }
 
-export interface GenerateSummaryOptions {
+interface GenerateSummaryOptions {
   sessionId: string;
   originalTask: string;
   platformOrigin?: string;

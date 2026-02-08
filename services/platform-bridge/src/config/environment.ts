@@ -28,5 +28,3 @@ export const config = {
   imessageContextMessages: optionalInt("IMESSAGE_CONTEXT_MESSAGES", 20),
   staleSessionThresholdMs: optionalInt("STALE_SESSION_THRESHOLD_MS", 86400000),
 };
-
-export type Config = typeof config;

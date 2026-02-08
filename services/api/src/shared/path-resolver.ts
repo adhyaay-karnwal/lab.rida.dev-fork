@@ -3,7 +3,7 @@ import { getWorkspaceContainerIdByProjectId } from "../repositories/container-de
 import { getWorkspaceContainerId } from "../repositories/container-session.repository";
 import { findSessionById, getSessionWorkspaceDirectory } from "../repositories/session.repository";
 
-export async function computeWorkspaceDirectory(sessionId: string): Promise<string> {
+async function computeWorkspaceDirectory(sessionId: string): Promise<string> {
   const workspaceContainerId = await getWorkspaceContainerId(sessionId);
 
   if (workspaceContainerId) {
@@ -27,23 +27,4 @@ export async function resolveWorkspacePathBySession(sessionId: string): Promise<
     return storedDirectory;
   }
   return computedDirectory;
-}
-
-export async function resolveWorkspacePathByProject(
-  sessionId: string,
-  projectId: string,
-): Promise<string> {
-  const workspaceContainerId = await getWorkspaceContainerIdByProjectId(projectId);
-  if (workspaceContainerId) {
-    return formatContainerWorkspacePath(sessionId, workspaceContainerId);
-  }
-  return formatWorkspacePath(sessionId);
-}
-
-export async function resolveWorkspacePath(sessionId: string): Promise<string> {
-  const session = await findSessionById(sessionId);
-  if (session) {
-    return resolveWorkspacePathByProject(sessionId, session.projectId);
-  }
-  return formatWorkspacePath(sessionId);
 }

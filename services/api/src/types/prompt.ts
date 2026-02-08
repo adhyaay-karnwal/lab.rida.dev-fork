@@ -11,5 +11,5 @@ export interface PromptContext {
 
 export type { PromptFragment, PromptService };
 
-export type ApiPromptFragment = PromptFragment<PromptContext>;
-export type ApiPromptService = PromptService<PromptContext>;
+type ApiPromptFragment = PromptFragment<PromptContext>;
+type ApiPromptService = PromptService<PromptContext>;

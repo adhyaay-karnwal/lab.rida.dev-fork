@@ -13,14 +13,6 @@ import { widelog } from "../logging";
 import { spawnDaemon, killByPidFile, type DaemonWorkerHandle } from "./daemon-process";
 import { recoverSession, discoverExistingSessions } from "./daemon-recovery";
 
-export type {
-  DaemonManager,
-  DaemonManagerConfig,
-  DaemonSession,
-  StartResult,
-  StopResult,
-} from "../types/daemon";
-
 interface SessionPorts {
   streamPort: number;
   cdpPort: number;

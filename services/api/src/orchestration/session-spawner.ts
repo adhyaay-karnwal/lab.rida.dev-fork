@@ -16,7 +16,7 @@ import { CONTAINER_STATUS, isContainerStatus, type ContainerStatus } from "../ty
 import { InternalError, ValidationError } from "../shared/errors";
 import { widelog } from "../logging";
 
-export interface SpawnSessionOptions {
+interface SpawnSessionOptions {
   projectId: string;
   taskSummary?: string;
   browserService: BrowserServiceManager;
@@ -26,7 +26,7 @@ export interface SpawnSessionOptions {
   proxyBaseDomain?: string;
 }
 
-export interface SpawnSessionResult {
+interface SpawnSessionResult {
   session: Session;
   containers: Array<{
     id: string;

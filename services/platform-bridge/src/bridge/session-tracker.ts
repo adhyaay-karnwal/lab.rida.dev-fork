@@ -7,13 +7,13 @@ import {
 import type { PlatformType } from "../types/messages";
 import { config } from "../config/environment";
 
-export interface ChatMapping {
+interface ChatMapping {
   sessionId: string;
   threadId: string | null;
   lastActivityAt: Date;
 }
 
-export class SessionTracker {
+class SessionTracker {
   async getMapping(platform: PlatformType, chatId: string): Promise<ChatMapping | null> {
     const [mapping] = await db
       .select({

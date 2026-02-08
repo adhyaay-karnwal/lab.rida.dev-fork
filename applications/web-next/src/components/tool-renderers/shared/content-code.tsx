@@ -76,4 +76,4 @@ function ContentCode({ content, filename, language }: ContentCodeProps) {
   );
 }
 
-export { ContentCode, type ContentCodeProps };
+export { ContentCode };

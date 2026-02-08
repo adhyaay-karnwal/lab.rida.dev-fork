@@ -1,8 +1,7 @@
-export { ContentCode, type ContentCodeProps } from "./content-code";
-export { ContentText, type ContentTextProps } from "./content-text";
-export { ContentDiff, type ContentDiffProps } from "./content-diff";
-export { ContentError, type ContentErrorProps } from "./content-error";
-export { ResultsToggle, type ResultsToggleProps } from "./results-toggle";
-export { FilePath, type FilePathProps, type ChangeType } from "./file-path";
+export { ContentCode } from "./content-code";
+export { ContentText } from "./content-text";
+export { ContentDiff } from "./content-diff";
+export { ContentError } from "./content-error";
+export { ResultsToggle } from "./results-toggle";
 export { parseFileOutput } from "./parse-file-output";
-export { getString, getBoolean, getNumber, getArray } from "./get-input";
+export { getString, getArray } from "./get-input";

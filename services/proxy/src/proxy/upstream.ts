@@ -6,7 +6,7 @@ import { containerPorts } from "@lab/database/schema/container-ports";
 import { eq, and } from "drizzle-orm";
 import type { UpstreamInfo } from "../types/proxy";
 
-export function formatUniqueHostname(sessionId: string, containerId: string): string {
+function formatUniqueHostname(sessionId: string, containerId: string): string {
   return `s-${sessionId.slice(0, 8)}-${containerId.slice(0, 8)}`;
 }
 

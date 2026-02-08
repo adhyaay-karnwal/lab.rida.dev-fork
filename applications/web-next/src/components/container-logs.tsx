@@ -271,7 +271,7 @@ function ContainerLogsEmpty({ children }: { children: ReactNode }) {
   );
 }
 
-export const ContainerLogs = {
+const ContainerLogs = {
   Provider: ContainerLogsProvider,
   Root: ContainerLogsRoot,
   Selector: ContainerLogsSelector,

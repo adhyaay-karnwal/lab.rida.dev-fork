@@ -32,7 +32,7 @@ interface ClusterContainer {
   ports: Record<number, number>;
 }
 
-export interface InitializeSessionContainersDeps {
+interface InitializeSessionContainersDeps {
   sandbox: Sandbox;
   publisher: Publisher;
   proxyManager: ProxyManager;

@@ -1,6 +1,6 @@
 import { formatUniqueHostname, formatNetworkAlias } from "../shared/naming";
 
-export interface PortMappingResult {
+interface PortMappingResult {
   portMap: Record<number, number>;
   networkAliases: string[];
 }

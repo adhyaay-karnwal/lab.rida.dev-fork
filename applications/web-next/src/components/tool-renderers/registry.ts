@@ -32,5 +32,3 @@ export function getToolRenderer(tool: string): ComponentType<ToolRendererProps> 
   const normalizedTool = tool.toLowerCase();
   return toolRenderers[normalizedTool] ?? FallbackRenderer;
 }
-
-export { toolRenderers };

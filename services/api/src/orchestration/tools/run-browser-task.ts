@@ -7,7 +7,7 @@ import { ImageStore } from "@lab/context";
 import { getErrorMessage } from "../../shared/errors";
 import { widelog } from "../../logging";
 
-export interface RunBrowserTaskToolContext {
+interface RunBrowserTaskToolContext {
   daemonController: DaemonController;
   createModel: () => LanguageModel;
   imageStore?: ImageStore;

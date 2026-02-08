@@ -2,8 +2,6 @@ import type { RouteHandler as BaseRouteHandler, RouteModule as BaseRouteModule }
 import type { widelogger } from "@lab/widelogger";
 import type { DaemonManager } from "./daemon";
 
-export type { HttpMethod } from "@lab/router";
-
 export type Widelog = ReturnType<typeof widelogger>["widelog"];
 
 export interface RouteContext {
@@ -12,4 +10,4 @@ export interface RouteContext {
 }
 
 export type RouteHandler = BaseRouteHandler<RouteContext>;
-export type RouteModule = BaseRouteModule<RouteContext>;
+type RouteModule = BaseRouteModule<RouteContext>;

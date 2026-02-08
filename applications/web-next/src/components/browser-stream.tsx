@@ -1,6 +1,6 @@
 "use client";
 
-import { BrowserCanvas, useBrowserStream } from "./browser-canvas";
+import { BrowserCanvas } from "./browser-canvas";
 import type { ReactNode } from "react";
 
 type BrowserStreamProviderProps = {
@@ -20,5 +20,3 @@ export function BrowserStreamView({ className }: { className?: string }) {
     </>
   );
 }
-
-export { useBrowserStream };

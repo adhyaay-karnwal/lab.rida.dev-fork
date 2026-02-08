@@ -35,4 +35,4 @@ function ContentText({ children, maxLines = 10, collapsible = true }: ContentTex
   );
 }
 
-export { ContentText, type ContentTextProps };
+export { ContentText };

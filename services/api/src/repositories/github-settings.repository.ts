@@ -20,7 +20,7 @@ function toSettingsOutput(settings: GitHubSettings): GitHubSettingsOutput {
   };
 }
 
-export interface GitHubSettingsInput {
+interface GitHubSettingsInput {
   pat?: string;
   username?: string;
   authorName?: string;
@@ -28,7 +28,7 @@ export interface GitHubSettingsInput {
   attributeAgent?: boolean;
 }
 
-export interface GitHubSettingsOutput {
+interface GitHubSettingsOutput {
   id: string;
   username: string | null;
   authorName: string | null;
@@ -41,7 +41,7 @@ export interface GitHubSettingsOutput {
   updatedAt: Date;
 }
 
-export interface GitHubCredentials {
+interface GitHubCredentials {
   token: string | null;
   username: string | null;
   authorName: string | null;
@@ -49,7 +49,7 @@ export interface GitHubCredentials {
   attributeAgent: boolean;
 }
 
-export interface GitHubOAuthInput {
+interface GitHubOAuthInput {
   accessToken: string;
   scopes: string;
   username: string;

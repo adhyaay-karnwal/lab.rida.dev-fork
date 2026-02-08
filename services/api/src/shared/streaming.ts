@@ -14,7 +14,7 @@
  * }
  * ```
  */
-export async function* breakOnDelimiter(
+async function* breakOnDelimiter(
   stream: AsyncIterable<string>,
   delimiter: string = "\n\n",
 ): AsyncGenerator<string, void, unknown> {

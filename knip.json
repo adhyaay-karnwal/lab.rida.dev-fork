@@ -1,13 +1,19 @@
 {
   "$schema": "https://unpkg.com/knip@5/schema.json",
   "ignore": ["**/dist/**", "**/.next/**", "**/.turbo/**", "containers/**"],
+  "ignoreDependencies": ["oxfmt", "oxlint"],
   "workspaces": {
     "packages/*": {
       "project": ["src/**/*.{ts,tsx}"]
     },
+    "packages/widelogger": {
+      "project": ["src/**/*.{ts,tsx}"],
+      "ignoreDependencies": ["pino-pretty"]
+    },
     "packages/ui": {
       "entry": ["src/components/*.tsx", "src/utils/*.ts", "src/hooks/*.ts"],
-      "project": ["src/**/*.{ts,tsx,css}"]
+      "project": ["src/**/*.{ts,tsx,css}"],
+      "ignoreDependencies": ["next"]
     },
     "packages/database": {
       "entry": ["src/schema/*.ts"],
@@ -37,7 +43,8 @@
     },
     "services/api": {
       "entry": ["src/routes/**/*.ts"],
-      "project": ["src/**/*.ts"]
+      "project": ["src/**/*.ts"],
+      "ignoreBinaries": ["pino-pretty"]
     },
     "services/browser-daemon": {
       "entry": ["src/routes/**/*.ts"],

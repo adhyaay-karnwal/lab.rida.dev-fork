@@ -1,20 +1,4 @@
 import type {
-  Event,
-  EventSessionCreated,
-  EventSessionUpdated,
-  EventSessionDeleted,
-  EventSessionStatus,
-  EventSessionIdle,
-  EventSessionError,
-  EventMessageUpdated,
-  EventMessageRemoved,
-  EventMessagePartUpdated,
-  EventMessagePartRemoved,
-  EventPermissionAsked,
-  EventPermissionReplied,
-  EventQuestionAsked,
-  EventQuestionReplied,
-  EventQuestionRejected,
   Part,
   TextPart,
   ReasoningPart,
@@ -27,75 +11,9 @@ import type {
   AgentPart,
   RetryPart,
   CompactionPart,
-  QuestionRequest,
-  QuestionInfo,
 } from "@opencode-ai/sdk/v2/client";
 
-export type { SnapshotPart, PatchPart, AgentPart, RetryPart, CompactionPart };
-
 export type SubtaskPart = Extract<Part, { type: "subtask" }>;
-
-export function isSessionCreatedEvent(event: Event): event is EventSessionCreated {
-  return event.type === "session.created";
-}
-
-export function isSessionUpdatedEvent(event: Event): event is EventSessionUpdated {
-  return event.type === "session.updated";
-}
-
-export function isSessionDeletedEvent(event: Event): event is EventSessionDeleted {
-  return event.type === "session.deleted";
-}
-
-export function isSessionStatusEvent(event: Event): event is EventSessionStatus {
-  return event.type === "session.status";
-}
-
-export function isSessionIdleEvent(event: Event): event is EventSessionIdle {
-  return event.type === "session.idle";
-}
-
-export function isSessionErrorEvent(event: Event): event is EventSessionError {
-  return event.type === "session.error";
-}
-
-export function isMessageUpdatedEvent(event: Event): event is EventMessageUpdated {
-  return event.type === "message.updated";
-}
-
-export function isMessageRemovedEvent(event: Event): event is EventMessageRemoved {
-  return event.type === "message.removed";
-}
-
-export function isMessagePartUpdatedEvent(event: Event): event is EventMessagePartUpdated {
-  return event.type === "message.part.updated";
-}
-
-export function isMessagePartRemovedEvent(event: Event): event is EventMessagePartRemoved {
-  return event.type === "message.part.removed";
-}
-
-export function isPermissionAskedEvent(event: Event): event is EventPermissionAsked {
-  return event.type === "permission.asked";
-}
-
-export function isPermissionRepliedEvent(event: Event): event is EventPermissionReplied {
-  return event.type === "permission.replied";
-}
-
-export function isQuestionAskedEvent(event: Event): event is EventQuestionAsked {
-  return event.type === "question.asked";
-}
-
-export function isQuestionRepliedEvent(event: Event): event is EventQuestionReplied {
-  return event.type === "question.replied";
-}
-
-export function isQuestionRejectedEvent(event: Event): event is EventQuestionRejected {
-  return event.type === "question.rejected";
-}
-
-export type { QuestionRequest, QuestionInfo };
 
 export function isTextPart(part: Part): part is TextPart {
   return part.type === "text";

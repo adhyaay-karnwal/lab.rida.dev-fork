@@ -27,7 +27,7 @@ import {
   methodNotAllowedResponse,
 } from "@lab/http-utilities";
 
-export interface ApiServerConfig {
+interface ApiServerConfig {
   proxyBaseDomain: string;
   opencodeUrl: string;
   github: {
@@ -38,7 +38,7 @@ export interface ApiServerConfig {
   frontendUrl?: string;
 }
 
-export interface ApiServerServices {
+interface ApiServerServices {
   browserService: BrowserServiceManager;
   sessionLifecycle: SessionLifecycleManager;
   poolManager: PoolManager;

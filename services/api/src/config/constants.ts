@@ -38,5 +38,3 @@ export const SERVER = {
   IDLE_TIMEOUT_SECONDS: 255,
   PROXY_PORT: 8080,
 } as const;
-
-export const SESSION_TITLE_LENGTH = 8;

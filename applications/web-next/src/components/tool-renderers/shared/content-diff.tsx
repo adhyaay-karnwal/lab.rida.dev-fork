@@ -42,4 +42,4 @@ function ContentDiff({ oldContent, newContent, filename }: ContentDiffProps) {
   );
 }
 
-export { ContentDiff, type ContentDiffProps };
+export { ContentDiff };

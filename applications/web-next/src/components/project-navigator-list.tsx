@@ -187,4 +187,4 @@ const ProjectNavigator = {
   ItemSkeletonBlock: ProjectNavigatorItemSkeletonBlock,
 };
 
-export { ProjectNavigator, useProjectNavigator };
+export { ProjectNavigator };

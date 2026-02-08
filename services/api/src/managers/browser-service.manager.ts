@@ -10,7 +10,7 @@ import type { BrowserService } from "../browser/browser-service";
 import type { DeferredPublisher } from "../shared/deferred-publisher";
 import { InternalError, ServiceUnavailableError } from "../shared/errors";
 
-export interface BrowserServiceConfig {
+interface BrowserServiceConfig {
   apiUrl: string;
   wsHost: string;
   cleanupDelayMs: number;

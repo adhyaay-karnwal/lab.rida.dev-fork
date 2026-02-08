@@ -2,7 +2,7 @@
  * Platform-specific configuration for the chat orchestrator.
  */
 
-export interface PlatformConfig {
+interface PlatformConfig {
   /**
    * When true, stream the response and break on double newlines,
    * returning multiple messages instead of one.

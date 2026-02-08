@@ -93,4 +93,4 @@ const Tabs = {
   Content: TabsContent,
 };
 
-export { Tabs, useTabs };
+export { Tabs };

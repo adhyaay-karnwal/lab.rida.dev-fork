@@ -266,4 +266,4 @@ const TextAreaGroup = {
   Submit: TextAreaGroupSubmit,
 };
 
-export { TextAreaGroup, useTextAreaGroup };
+export { TextAreaGroup };

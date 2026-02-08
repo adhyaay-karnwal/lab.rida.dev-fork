@@ -55,7 +55,7 @@ function isServerMessage(value: unknown): value is WireServerMessage {
   }
 }
 
-export class MultiplayerClient {
+class MultiplayerClient {
   private ws: WebSocket | null = null;
   private url: string;
   private subscriptions = new Map<string, Set<MessageListener>>();

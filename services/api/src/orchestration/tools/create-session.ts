@@ -9,7 +9,7 @@ import type { PoolManager } from "../../managers/pool.manager";
 import type { OpencodeClient, Publisher } from "../../types/dependencies";
 import type { SessionStateStore } from "../../state/session-state-store";
 
-export interface CreateSessionToolContext {
+interface CreateSessionToolContext {
   browserService: BrowserServiceManager;
   sessionLifecycle: SessionLifecycleManager;
   poolManager: PoolManager;

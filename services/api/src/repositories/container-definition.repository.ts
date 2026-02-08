@@ -9,16 +9,6 @@ export async function findContainersByProjectId(projectId: string): Promise<Cont
   return db.select().from(containers).where(eq(containers.projectId, projectId));
 }
 
-export async function createContainer(data: {
-  projectId: string;
-  image: string;
-  hostname?: string;
-}): Promise<Container> {
-  const [container] = await db.insert(containers).values(data).returning();
-  if (!container) throw new InternalError("Failed to create container", "CONTAINER_CREATE_FAILED");
-  return container;
-}
-
 export async function getWorkspaceContainerIdByProjectId(
   projectId: string,
 ): Promise<string | null> {

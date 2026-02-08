@@ -51,26 +51,6 @@ export class ConfigurationError extends AppError {
   }
 }
 
-export class ContainerError extends AppError {
-  constructor(
-    message: string,
-    public readonly containerId?: string,
-  ) {
-    super(message, "CONTAINER_ERROR", 500);
-    this.name = "ContainerError";
-  }
-}
-
-export class NetworkError extends AppError {
-  constructor(
-    message: string,
-    public readonly networkName?: string,
-  ) {
-    super(message, "NETWORK_ERROR", 500);
-    this.name = "NetworkError";
-  }
-}
-
 export function orThrow<T>(value: T | null | undefined, resource: string, id?: string): T {
   if (value == null) throw new NotFoundError(resource, id);
   return value;

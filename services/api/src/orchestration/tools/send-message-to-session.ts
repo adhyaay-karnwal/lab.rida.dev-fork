@@ -12,7 +12,7 @@ const inputSchema = z.object({
   message: z.string().describe("The message content to send to the session"),
 });
 
-export interface SendMessageToolContext {
+interface SendMessageToolContext {
   modelId?: string;
   opencode: OpencodeClient;
   publisher: Publisher;

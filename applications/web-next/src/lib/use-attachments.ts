@@ -11,7 +11,7 @@ export interface Attachment {
   error?: string;
 }
 
-export interface UseAttachmentsReturn {
+interface UseAttachmentsReturn {
   attachments: Attachment[];
   addFiles: (files: FileList | File[]) => Promise<void>;
   removeAttachment: (id: string) => void;

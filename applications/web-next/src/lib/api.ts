@@ -28,7 +28,7 @@ export function prefetchSessionContainers(sessionId: string): void {
     .finally(() => pendingContainerPrefetches.delete(sessionId));
 }
 
-export interface GitHubSettingsInput {
+interface GitHubSettingsInput {
   pat?: string;
   username?: string;
   authorName?: string;
@@ -36,7 +36,7 @@ export interface GitHubSettingsInput {
   attributeAgent?: boolean;
 }
 
-export interface GitHubSettingsResponse {
+interface GitHubSettingsResponse {
   configured: boolean;
   id?: string;
   username?: string | null;
@@ -64,11 +64,6 @@ export async function saveGitHubSettings(
   });
   if (!response.ok) throw new Error("Failed to save GitHub settings");
   return response.json();
-}
-
-export async function deleteGitHubSettings(): Promise<void> {
-  const response = await fetch(`${API_BASE}/github/settings`, { method: "DELETE" });
-  if (!response.ok) throw new Error("Failed to delete GitHub settings");
 }
 
 export async function disconnectGitHub(): Promise<void> {

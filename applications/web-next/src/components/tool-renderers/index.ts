@@ -1,2 +1,2 @@
-export { getToolRenderer, toolRenderers } from "./registry";
-export type { ToolRendererProps, ToolStatus } from "./types";
+export { getToolRenderer } from "./registry";
+export type { ToolRendererProps } from "./types";

@@ -7,7 +7,7 @@ export const INFERENCE_STATUS = {
 
 export type InferenceStatus = (typeof INFERENCE_STATUS)[keyof typeof INFERENCE_STATUS];
 
-export interface SessionState {
+interface SessionState {
   inferenceStatus: InferenceStatus;
   lastMessage?: string;
 }

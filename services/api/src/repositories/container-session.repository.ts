@@ -8,7 +8,7 @@ import { InternalError } from "../shared/errors";
 import { formatNetworkAlias } from "../shared/naming";
 import { CONTAINER_STATUS, type ContainerStatus } from "../types/container";
 
-export interface SessionService {
+interface SessionService {
   containerId: string;
   runtimeId: string;
   image: string;
@@ -248,46 +248,6 @@ export async function getSessionServices(sessionId: string): Promise<SessionServ
     status: row.status,
     ports: (portsByContainerId.get(row.containerId) ?? []).map(({ port }) => port),
   }));
-}
-
-export async function getSessionContainersWithPorts(sessionId: string): Promise<
-  {
-    hostname: string;
-    port: number;
-  }[]
-> {
-  const result = await db
-    .select({
-      port: containerPorts.port,
-    })
-    .from(sessionContainers)
-    .innerJoin(containerPorts, eq(containerPorts.containerId, sessionContainers.containerId))
-    .where(eq(sessionContainers.sessionId, sessionId))
-    .orderBy(asc(containerPorts.port));
-
-  return result.map((row) => ({
-    hostname: formatNetworkAlias(sessionId, row.port),
-    port: row.port,
-  }));
-}
-
-export async function getSessionContainersForReconciliation(sessionId: string): Promise<
-  {
-    containerId: string;
-    runtimeId: string;
-    port: number;
-  }[]
-> {
-  return db
-    .select({
-      containerId: sessionContainers.containerId,
-      runtimeId: sessionContainers.runtimeId,
-      port: containerPorts.port,
-    })
-    .from(sessionContainers)
-    .innerJoin(containerPorts, eq(containerPorts.containerId, sessionContainers.containerId))
-    .where(eq(sessionContainers.sessionId, sessionId))
-    .orderBy(asc(containerPorts.port));
 }
 
 export async function getWorkspaceContainerId(sessionId: string): Promise<string | null> {

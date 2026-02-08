@@ -845,15 +845,4 @@ const Review = {
   BrowserTree: ReviewBrowserTree,
 };
 
-export {
-  Review,
-  useReview,
-  type ReviewableFile,
-  type LineSelection,
-  type FileChangeType,
-  type FileStatus,
-  type FileNode,
-  type Patch,
-  type BrowserState,
-  type BrowserActions,
-};
+export { Review, type FileStatus, type FileNode, type BrowserState, type BrowserActions };

@@ -20,7 +20,7 @@ import type { OpencodeClient, Publisher } from "../types/dependencies";
 import type { SessionStateStore } from "../state/session-state-store";
 import { NotFoundError } from "../shared/errors";
 
-export interface OrchestrationInput {
+interface OrchestrationInput {
   content: string;
   channelId?: string;
   modelId?: string;
@@ -35,7 +35,7 @@ export interface OrchestrationInput {
   sessionStateStore: SessionStateStore;
 }
 
-export interface OrchestrationResult {
+interface OrchestrationResult {
   orchestrationId: string | null;
   sessionId: string;
   projectId: string;

@@ -26,7 +26,7 @@ export async function reconcileNetworkConnections(sandbox: Sandbox): Promise<voi
   await sandbox.session.reconcileSessionNetworks(activeSessions.map((session) => session.id));
 }
 
-export async function ensureSharedContainerConnected(
+async function ensureSharedContainerConnected(
   sessionId: string,
   containerName: string,
   sandbox: Sandbox,

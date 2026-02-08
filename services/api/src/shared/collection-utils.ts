@@ -9,11 +9,3 @@ export function groupBy<T, K>(items: T[], keyFn: (item: T, index: number) => K):
   }
   return map;
 }
-
-export function indexBy<T, K>(items: T[], keyFn: (item: T) => K): Map<K, T> {
-  const map = new Map<K, T>();
-  for (const item of items) {
-    map.set(keyFn(item), item);
-  }
-  return map;
-}

@@ -17,7 +17,7 @@ function getEncryptionKey(): Buffer {
   return keyBuffer;
 }
 
-export interface EncryptedData {
+interface EncryptedData {
   encrypted: string;
   nonce: string;
 }
@@ -48,8 +48,4 @@ export function decrypt(encrypted: string, nonce: string): string {
   decipher.setAuthTag(authTag);
 
   return Buffer.concat([decipher.update(ciphertext), decipher.final()]).toString("utf8");
-}
-
-export function generateEncryptionKey(): string {
-  return randomBytes(32).toString("base64");
 }

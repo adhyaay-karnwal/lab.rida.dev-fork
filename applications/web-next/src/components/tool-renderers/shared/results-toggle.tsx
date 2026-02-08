@@ -24,4 +24,4 @@ function ResultsToggle({ expanded, onToggle, label, count }: ResultsToggleProps)
   );
 }
 
-export { ResultsToggle, type ResultsToggleProps };
+export { ResultsToggle };

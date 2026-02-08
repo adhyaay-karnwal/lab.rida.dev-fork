@@ -13,20 +13,6 @@ export function ProjectsLoadingFallback() {
   );
 }
 
-export function SessionsLoadingFallback() {
-  return (
-    <div className="flex flex-col gap-px">
-      {[1, 2, 3].map((i) => (
-        <div key={i} className="flex items-center gap-2 px-3 py-1.5 bg-bg">
-          <div className="h-3 w-3 rounded-full bg-bg-hover animate-pulse" />
-          <div className="h-3 w-16 rounded bg-bg-hover animate-pulse" />
-          <div className="h-3 flex-1 max-w-32 rounded bg-bg-hover animate-pulse" />
-        </div>
-      ))}
-    </div>
-  );
-}
-
 export function ChatLoadingFallback() {
   return (
     <div className="flex flex-col h-full items-center justify-center">

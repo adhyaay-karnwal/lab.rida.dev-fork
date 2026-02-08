@@ -143,9 +143,9 @@ function createAbortableStream(
   });
 }
 
-export type OpenCodeProxyHandler = (request: Request, url: URL) => Promise<Response>;
+type OpenCodeProxyHandler = (request: Request, url: URL) => Promise<Response>;
 
-export interface OpenCodeProxyDeps {
+interface OpenCodeProxyDeps {
   opencodeUrl: string;
   publisher: Publisher;
   promptService: PromptService;

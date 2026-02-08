@@ -1,6 +1,6 @@
 import type { PromptContext } from "../types/prompt";
 
-export interface CreatePromptContextParams {
+interface CreatePromptContextParams {
   sessionId: string;
   projectId: string;
   projectSystemPrompt: string | null;

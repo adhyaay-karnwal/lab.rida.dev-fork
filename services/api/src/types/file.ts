@@ -1,4 +1,4 @@
-export type FileChangeType = "modified" | "created" | "deleted";
+type FileChangeType = "modified" | "created" | "deleted";
 
 export function getChangeType(before: string, after: string): FileChangeType {
   if (!before && after) return "created";

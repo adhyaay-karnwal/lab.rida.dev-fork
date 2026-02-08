@@ -5,7 +5,7 @@ import { responseSubscriber } from "./response-subscriber";
 import type { IncomingPlatformMessage, MessagingMode, PlatformType } from "../types/messages";
 import { getAdapter } from "../platforms";
 
-export class MessageRouter {
+class MessageRouter {
   async handleIncomingMessage(message: IncomingPlatformMessage): Promise<void> {
     const { platform, chatId, userId, messageId, content, timestamp } = message;
 

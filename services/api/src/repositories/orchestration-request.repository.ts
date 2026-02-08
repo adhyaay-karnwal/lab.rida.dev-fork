@@ -10,15 +10,7 @@ import {
 import { eq } from "drizzle-orm";
 import { InternalError, orThrow } from "../shared/errors";
 
-export async function findOrchestrationById(id: string): Promise<OrchestrationRequest | null> {
-  const [record] = await db
-    .select()
-    .from(orchestrationRequests)
-    .where(eq(orchestrationRequests.id, id));
-  return record ?? null;
-}
-
-export async function findOrchestrationBySessionId(
+async function findOrchestrationBySessionId(
   sessionId: string,
 ): Promise<OrchestrationRequest | null> {
   const [record] = await db
@@ -108,16 +100,6 @@ export async function updateOrchestrationSummaryStatus(
       summaryText,
       updatedAt: new Date(),
       ...(summaryStatus === "sent" && { completedAt: new Date() }),
-    })
-    .where(eq(orchestrationRequests.id, id));
-}
-
-export async function markOrchestrationCompleted(id: string): Promise<void> {
-  await db
-    .update(orchestrationRequests)
-    .set({
-      completedAt: new Date(),
-      updatedAt: new Date(),
     })
     .where(eq(orchestrationRequests.id, id));
 }

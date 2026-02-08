@@ -18,7 +18,7 @@ interface ContainerCleanupResult {
   error?: unknown;
 }
 
-export interface CleanupSessionDeps {
+interface CleanupSessionDeps {
   sandbox: Sandbox;
   publisher: Publisher;
   proxyManager: ProxyManager;

@@ -11,7 +11,7 @@ import {
 } from "react";
 import { tv } from "tailwind-variants";
 import { TextAreaGroup } from "./textarea-group";
-import { Tabs, useTabs } from "./tabs";
+import { Tabs } from "./tabs";
 import { PageFrame, Header } from "./layout-primitives";
 import { useAttachments, type Attachment } from "@/lib/use-attachments";
 
@@ -323,13 +323,4 @@ const Chat = {
   Input: ChatInput,
 };
 
-export {
-  Chat,
-  useChat,
-  useChatInput,
-  useTabs,
-  type ChatRole,
-  type ChatTab,
-  type SubmitOptions,
-  type Attachment,
-};
+export { Chat, useChat };

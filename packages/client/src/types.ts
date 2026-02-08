@@ -55,7 +55,7 @@ export interface CreateContainerInput {
   dependsOn?: (DependsOnInput | string)[];
 }
 
-export interface SessionContainerInfo {
+interface SessionContainerInfo {
   id: string;
   name: string;
   image: string;

@@ -11,7 +11,7 @@ import {
 } from "@lab/browser-protocol";
 import { widelog } from "../logging";
 
-export interface BrowserServiceConfig {
+interface BrowserServiceConfig {
   browserWsHost: string;
   browserDaemonUrl: string;
   cleanupDelayMs: number;
@@ -19,7 +19,7 @@ export interface BrowserServiceConfig {
   maxRetries: number;
 }
 
-export interface BrowserServiceDependencies {
+interface BrowserServiceDependencies {
   stateStore: StateStore;
   daemonController: DaemonController;
   publishFrame: (sessionId: string, frame: string, timestamp: number) => void;

@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { api } from "./api";
 import { useMultiplayer } from "./multiplayer";
 
-export type OrchestrationStatus =
+type OrchestrationStatus =
   | "idle"
   | "pending"
   | "thinking"
@@ -13,7 +13,7 @@ export type OrchestrationStatus =
   | "complete"
   | "error";
 
-export interface OrchestrationState {
+interface OrchestrationState {
   status: OrchestrationStatus;
   projectName: string | null;
   sessionId: string | null;

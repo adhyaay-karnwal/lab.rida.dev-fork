@@ -7,7 +7,7 @@ import { createDefaultPromptService } from "../prompts/builder";
 import type { OpencodeClient, Publisher } from "../types/dependencies";
 import { ExternalServiceError, throwOnOpencodeError } from "../shared/errors";
 
-export interface InitiateConversationOptions {
+interface InitiateConversationOptions {
   sessionId: string;
   task: string;
   modelId?: string;

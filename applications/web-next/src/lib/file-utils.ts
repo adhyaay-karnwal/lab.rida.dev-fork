@@ -4,7 +4,7 @@ const MAX_FILE_SIZE = 10 * 1024 * 1024; // 10MB
 
 type AllowedImageType = (typeof ALLOWED_IMAGE_TYPES)[number];
 
-export interface ValidationResult {
+interface ValidationResult {
   valid: boolean;
   error?: string;
 }

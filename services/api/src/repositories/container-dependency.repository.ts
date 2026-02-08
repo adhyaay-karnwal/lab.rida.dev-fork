@@ -4,21 +4,12 @@ import {
   containerDependencies,
   type ContainerDependency,
 } from "@lab/database/schema/container-dependencies";
-import { eq, inArray } from "drizzle-orm";
+import { inArray } from "drizzle-orm";
 import { findContainersByProjectId } from "./container-definition.repository";
 import { groupBy } from "../shared/collection-utils";
 
 export interface ContainerWithDependencies extends Container {
   dependencies: { dependsOnContainerId: string; condition: string }[];
-}
-
-export async function findDependenciesByContainerId(
-  containerId: string,
-): Promise<ContainerDependency[]> {
-  return db
-    .select()
-    .from(containerDependencies)
-    .where(eq(containerDependencies.containerId, containerId));
 }
 
 async function fetchDependenciesForContainers(
@@ -48,31 +39,6 @@ export async function findContainersWithDependencies(
       condition: dep.condition,
     })),
   }));
-}
-
-function buildDependencyRecords(
-  containerId: string,
-  dependencies: { dependsOnContainerId: string; condition?: string }[],
-): { containerId: string; dependsOnContainerId: string; condition: string }[] {
-  return dependencies.map((dependency) => ({
-    containerId,
-    dependsOnContainerId: dependency.dependsOnContainerId,
-    condition: dependency.condition || "service_started",
-  }));
-}
-
-export async function createContainerDependencies(
-  containerId: string,
-  dependencies: { dependsOnContainerId: string; condition?: string }[],
-): Promise<void> {
-  if (dependencies.length === 0) return;
-
-  const records = buildDependencyRecords(containerId, dependencies);
-  await db.insert(containerDependencies).values(records);
-}
-
-export async function deleteContainerDependencies(containerId: string): Promise<void> {
-  await db.delete(containerDependencies).where(eq(containerDependencies.containerId, containerId));
 }
 
 function checkSelfDependency(containerId: string, dependsOnIds: string[]): string | null {

@@ -3,7 +3,7 @@ export interface RouteInfo {
   url: string;
 }
 
-export interface ClusterContainer {
+interface ClusterContainer {
   containerId: string;
   hostname: string;
   ports: Record<number, number>;

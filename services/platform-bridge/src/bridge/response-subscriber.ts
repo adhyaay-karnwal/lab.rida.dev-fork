@@ -12,7 +12,7 @@ interface SubscriptionInfo {
   unsubscribe: () => void;
 }
 
-export class ResponseSubscriber {
+class ResponseSubscriber {
   private subscriptions = new Map<string, SubscriptionInfo>();
 
   subscribeToSession(

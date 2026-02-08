@@ -182,4 +182,4 @@ const ProvidersList = {
   View: ProvidersListView,
 };
 
-export { ProvidersList, useProvidersList };
+export { ProvidersList };

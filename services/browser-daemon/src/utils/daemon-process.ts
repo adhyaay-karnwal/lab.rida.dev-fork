@@ -6,17 +6,17 @@ import { widelog } from "../logging";
 import { getErrorMessage } from "../shared/errors";
 import { TIMING } from "../config/constants";
 
-export interface SpawnOptions {
+interface SpawnOptions {
   sessionId: string;
   streamPort: number;
   cdpPort: number;
   profileDir?: string;
 }
 
-export type WorkerMessageHandler = (message: WorkerMessage) => void;
-export type WorkerCloseHandler = (code: number) => void;
+type WorkerMessageHandler = (message: WorkerMessage) => void;
+type WorkerCloseHandler = (code: number) => void;
 
-export interface WorkerMessage {
+interface WorkerMessage {
   type: string;
   data?: unknown;
   error?: string;

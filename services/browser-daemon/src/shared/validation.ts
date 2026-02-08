@@ -13,7 +13,7 @@ export async function parseRequestBody<T>(request: Request, schema: ZodSchema<T>
   return result.data;
 }
 
-export function formatZodError(error: ZodError): string {
+function formatZodError(error: ZodError): string {
   const issues = error.issues.map((issue) => {
     const path = issue.path.length > 0 ? `${issue.path.join(".")}: ` : "";
     return `${path}${issue.message}`;

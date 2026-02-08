@@ -5,4 +5,4 @@ export const SESSION_STATUS = {
   ERROR: "error",
 } as const;
 
-export type SessionStatus = (typeof SESSION_STATUS)[keyof typeof SESSION_STATUS];
+type SessionStatus = (typeof SESSION_STATUS)[keyof typeof SESSION_STATUS];

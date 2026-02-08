@@ -3,8 +3,3 @@ export const TIMING = {
   SSE_PING_INTERVAL_MS: 5_000,
   COMMAND_TIMEOUT_MS: 30_000,
 } as const;
-
-export const SERVER = {
-  DEFAULT_API_PORT: 80,
-  DEFAULT_BASE_STREAM_PORT: 9224,
-} as const;

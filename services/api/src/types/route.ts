@@ -9,17 +9,7 @@ import type {
   PromptContext,
 } from "./contexts";
 
-export type {
-  BrowserContext,
-  SessionContext,
-  InfraContext,
-  MonitorContext,
-  GithubContext,
-  ProxyContext,
-  PromptContext,
-} from "./contexts";
-
-export type { HttpMethod } from "@lab/router";
+export type { BrowserContext, InfraContext, GithubContext, ProxyContext } from "./contexts";
 
 interface RouteContextMap {
   browser: BrowserContext;
@@ -52,4 +42,4 @@ export type RouteContextFor<TKeys extends ContextKey> = UnionToIntersection<Rout
 export type NoRouteContext = Record<string, never>;
 
 export type Handler<TContext> = RouteHandler<TContext>;
-export type RouteModule = BaseRouteModule<RouteContext>;
+type RouteModule = BaseRouteModule<RouteContext>;

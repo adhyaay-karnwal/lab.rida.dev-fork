@@ -15,7 +15,7 @@ export interface OpencodeMessage {
   parts: MessagePart[];
 }
 
-export function isMessagePart(value: unknown): value is MessagePart {
+function isMessagePart(value: unknown): value is MessagePart {
   return (
     typeof value === "object" && value !== null && "type" in value && typeof value.type === "string"
   );

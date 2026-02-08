@@ -64,7 +64,7 @@ export interface SessionMessage {
   senderId: string;
 }
 
-export type ChatAction = "response" | "created_session" | "forwarded_message";
+type ChatAction = "response" | "created_session" | "forwarded_message";
 
 export interface ChatRequest {
   content: string;

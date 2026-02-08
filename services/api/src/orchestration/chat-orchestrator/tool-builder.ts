@@ -19,7 +19,7 @@ import type { ImageAnalyzerContext } from "@lab/subagents/vision";
 import type { OpencodeClient, Publisher } from "../../types/dependencies";
 import type { SessionStateStore } from "../../state/session-state-store";
 
-export interface BuildOrchestratorToolsConfig {
+interface BuildOrchestratorToolsConfig {
   browserService: BrowserServiceManager;
   sessionLifecycle: SessionLifecycleManager;
   poolManager: PoolManager;

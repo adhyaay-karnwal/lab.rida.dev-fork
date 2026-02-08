@@ -23,7 +23,7 @@ import {
 } from "./state-store";
 import { ExternalServiceError, NotFoundError } from "../shared/errors";
 
-export interface BrowserBootstrapConfig {
+interface BrowserBootstrapConfig {
   browserApiUrl: string;
   browserWsHost: string;
   cleanupDelayMs: number;

@@ -50,5 +50,3 @@ export function Nav({ items }: NavProps) {
     </Header>
   );
 }
-
-export type { NavItem };

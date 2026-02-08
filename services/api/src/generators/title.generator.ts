@@ -10,7 +10,7 @@ function buildPrompt(userMessage: string): string {
 User's message: ${userMessage}`;
 }
 
-export interface GenerateTitleOptions {
+interface GenerateTitleOptions {
   sessionId: string;
   userMessage: string;
   fallbackTitle?: string;

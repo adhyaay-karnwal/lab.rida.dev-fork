@@ -16,7 +16,7 @@ const SWR_CONFIG = {
   errorRetryCount: 3,
 } as const;
 
-export const MultiplayerEnabledContext = createContext(false);
+const MultiplayerEnabledContext = createContext(false);
 
 export function useMultiplayerEnabled() {
   return use(MultiplayerEnabledContext);

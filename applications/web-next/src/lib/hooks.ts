@@ -7,7 +7,7 @@ import type { Session } from "@lab/client";
 
 const preferredModelAtom = atomWithStorage<string | null>("preferred-model", null);
 
-export function usePreferredModel() {
+function usePreferredModel() {
   return useAtom(preferredModelAtom);
 }
 
@@ -53,7 +53,7 @@ interface ModelGroup {
   models: { label: string; value: string }[];
 }
 
-export function useModels() {
+function useModels() {
   return useSWR("models", async () => {
     const response = await api.models.list();
 
@@ -73,13 +73,6 @@ export function useModels() {
     }
 
     return Array.from(groupMap.values());
-  });
-}
-
-export function useContainers(projectId: string | null) {
-  return useSWR(projectId ? `containers-${projectId}` : null, () => {
-    if (!projectId) return [];
-    return api.containers.list(projectId);
   });
 }
 

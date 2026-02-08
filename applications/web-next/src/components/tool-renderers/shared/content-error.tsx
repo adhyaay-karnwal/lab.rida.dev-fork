@@ -34,4 +34,4 @@ function ContentError({ children, maxLines = 5 }: ContentErrorProps) {
   );
 }
 
-export { ContentError, type ContentErrorProps };
+export { ContentError };

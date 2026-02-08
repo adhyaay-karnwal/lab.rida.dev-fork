@@ -7,13 +7,7 @@ import type {
   ReasoningPart,
   ToolPart,
   FilePart,
-  StepStartPart,
-  StepFinishPart,
   SnapshotPart,
-  PatchPart,
-  AgentPart,
-  RetryPart,
-  CompactionPart,
 } from "@opencode-ai/sdk/v2/client";
 import { Check, ChevronRight, Loader2, File, FilePlus, FileEdit } from "lucide-react";
 import { tv } from "tailwind-variants";

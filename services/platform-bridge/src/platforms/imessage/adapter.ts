@@ -8,7 +8,7 @@ import type { PlatformAdapter, MessageHandler } from "../types";
 import type { OutgoingPlatformMessage, MessageAttachment } from "../../types/messages";
 import { config } from "../../config/environment";
 
-export class IMessageAdapter implements PlatformAdapter {
+class IMessageAdapter implements PlatformAdapter {
   readonly platform = "imessage" as const;
   readonly messagingMode = "passive" as const;
   private sdk: IMessageSDK | null = null;

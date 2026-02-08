@@ -145,14 +145,14 @@ class LogStreamTracker {
   }
 }
 
-export type ContainerStartedEvent = {
+type ContainerStartedEvent = {
   sessionId: string;
   containerId: string;
   runtimeId: string;
   hostname: string;
 };
 
-export type ContainerStoppedEvent = {
+type ContainerStoppedEvent = {
   sessionId: string;
   containerId: string;
 };

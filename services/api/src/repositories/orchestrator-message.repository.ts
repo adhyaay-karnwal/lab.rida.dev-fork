@@ -35,7 +35,7 @@ export async function saveOrchestratorMessage(params: {
   return message;
 }
 
-export async function getOrchestratorMessages(params: {
+async function getOrchestratorMessages(params: {
   platform: string;
   platformChatId: string;
   limit?: number;

@@ -387,4 +387,4 @@ export const ContainerEditor = {
   WorkspaceToggle: ContainerEditorWorkspaceToggle,
 };
 
-export type { ContainerDraft, EnvVar, DependencyDraft };
+export type { ContainerDraft };

@@ -1,4 +1,4 @@
-export interface ChatOrchestratorPromptContext {
+interface ChatOrchestratorPromptContext {
   conversationHistory?: string[];
   platformOrigin?: string;
   timestamp?: string;

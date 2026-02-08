@@ -16,25 +16,25 @@ export interface SessionDiffEvent {
   properties: { diff: FileDiff[] };
 }
 
-export interface MessageUpdatedEvent {
+interface MessageUpdatedEvent {
   type: "message.updated";
   properties: { parts: MessagePart[] };
 }
 
-export interface MessagePartUpdatedEvent {
+interface MessagePartUpdatedEvent {
   type: "message.part.updated";
   properties: { part: MessagePart };
 }
 
-export interface SessionIdleEvent {
+interface SessionIdleEvent {
   type: "session.idle";
 }
 
-export interface SessionErrorEvent {
+interface SessionErrorEvent {
   type: "session.error";
 }
 
-export type OpenCodeEvent =
+type OpenCodeEvent =
   | SessionDiffEvent
   | MessageUpdatedEvent
   | MessagePartUpdatedEvent

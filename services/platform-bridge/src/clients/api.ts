@@ -7,7 +7,7 @@ import type {
   ChatResult,
 } from "../types/messages";
 
-export class ApiClient {
+class ApiClient {
   private baseUrl: string;
 
   constructor(baseUrl: string = config.apiUrl) {
@@ -230,7 +230,7 @@ export class ApiClient {
   }
 }
 
-export interface ScreenshotResult {
+interface ScreenshotResult {
   sessionId: string;
   timestamp: number;
   format: string;
@@ -238,7 +238,7 @@ export interface ScreenshotResult {
   data: string;
 }
 
-export interface SummaryResult {
+interface SummaryResult {
   success: boolean;
   outcome?: string;
   summary: string;

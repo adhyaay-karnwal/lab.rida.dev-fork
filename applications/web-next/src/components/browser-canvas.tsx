@@ -234,5 +234,3 @@ export const BrowserCanvas = {
   Placeholder: BrowserCanvasPlaceholder,
   View: BrowserCanvasView,
 };
-
-export { useBrowserStream };

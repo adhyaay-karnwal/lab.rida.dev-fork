@@ -113,5 +113,3 @@ export function SessionInfoView({ session, project, containers, onDelete }: Sess
     </SessionInfoPane.Root>
   );
 }
-
-export type { SessionContainer };

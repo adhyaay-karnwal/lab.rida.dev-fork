@@ -11,7 +11,7 @@ import {
 } from "./types";
 import type { SessionInfo } from "../tool-result-handler";
 
-export interface PreparedOrchestration {
+interface PreparedOrchestration {
   model: LanguageModel;
   tools: Awaited<ReturnType<typeof buildOrchestratorTools>>;
   systemPrompt: string;

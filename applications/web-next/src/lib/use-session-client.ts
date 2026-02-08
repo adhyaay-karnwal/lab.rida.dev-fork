@@ -3,7 +3,7 @@
 import { useRef } from "react";
 import { createOpencodeClient } from "@opencode-ai/sdk/v2/client";
 
-export type OpencodeClient = ReturnType<typeof createOpencodeClient>;
+type OpencodeClient = ReturnType<typeof createOpencodeClient>;
 
 function getApiUrl(): string {
   const apiUrl = process.env.NEXT_PUBLIC_API_URL;

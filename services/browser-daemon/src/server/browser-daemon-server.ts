@@ -13,7 +13,7 @@ import type { RouteContext, Widelog } from "../types/route";
 import { AppError } from "../shared/errors";
 import { TIMING } from "../config/constants";
 
-export interface BrowserDaemonServerConfig {
+interface BrowserDaemonServerConfig {
   daemonManager: DaemonManager;
   widelog: Widelog;
 }

@@ -152,4 +152,4 @@ const ProjectsList = {
   View: ProjectsListView,
 };
 
-export { ProjectsList, useProjectsList };
+export { ProjectsList };

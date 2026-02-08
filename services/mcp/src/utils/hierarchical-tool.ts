@@ -5,26 +5,26 @@ type TextContent = { type: "text"; text: string };
 type ImageContent = { type: "image"; data: string; mimeType: "image/png" };
 type Content = TextContent | ImageContent;
 
-export interface ToolResult {
+interface ToolResult {
   [key: string]: unknown;
   isError?: boolean;
   content: Content[];
 }
 
-export interface CommandNode {
+interface CommandNode {
   description: string;
   children?: Record<string, CommandNode>;
   params?: z.ZodRawShape;
   handler?: (args: Record<string, unknown>, context: CommandContext) => Promise<ToolResult>;
 }
 
-export interface CommandContext {
+interface CommandContext {
   sessionId: string;
   generateCommandId: () => string;
   [key: string]: unknown;
 }
 
-export interface HierarchicalToolConfig {
+interface HierarchicalToolConfig {
   name: string;
   description: string;
   sessionParam?: string;
@@ -246,5 +246,3 @@ export function createHierarchicalTool(server: McpServer, config: HierarchicalTo
     },
   );
 }
-
-export { parseCommandPath, formatHelp, navigateTree, validateParams };

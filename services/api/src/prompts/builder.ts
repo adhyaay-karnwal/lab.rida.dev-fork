@@ -6,7 +6,7 @@ import { projectPromptFragment } from "./fragments/project-prompt";
 /**
  * Fluent builder for constructing prompt services in the API.
  */
-export class PromptBuilder {
+class PromptBuilder {
   private readonly builder: BasePromptBuilder<PromptContext>;
 
   private constructor(builder: BasePromptBuilder<PromptContext>) {

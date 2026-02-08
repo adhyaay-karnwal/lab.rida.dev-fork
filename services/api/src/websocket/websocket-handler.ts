@@ -23,7 +23,7 @@ import { widelog } from "../logging";
 
 export { type Auth } from "../types/websocket";
 
-export interface WebSocketHandlerDeps {
+interface WebSocketHandlerDeps {
   browserService: BrowserService;
   publisher: Publisher;
   opencode: OpencodeClient;

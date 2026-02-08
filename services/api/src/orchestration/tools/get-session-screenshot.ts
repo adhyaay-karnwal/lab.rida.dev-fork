@@ -4,7 +4,7 @@ import { findSessionById } from "../../repositories/session.repository";
 import type { DaemonController } from "@lab/browser-protocol";
 import { ImageStore } from "@lab/context";
 
-export interface GetSessionScreenshotToolContext {
+interface GetSessionScreenshotToolContext {
   daemonController: DaemonController;
   imageStore?: ImageStore;
 }

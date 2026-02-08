@@ -12,11 +12,3 @@ const serverApi = createClient({ baseUrl: API_BASE });
 export function prefetchProjects() {
   return serverApi.projects.list();
 }
-
-export function prefetchModels() {
-  return serverApi.models.list();
-}
-
-export function prefetchSessions(projectId: string) {
-  return serverApi.sessions.list(projectId);
-}
