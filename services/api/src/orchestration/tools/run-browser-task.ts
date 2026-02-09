@@ -1,9 +1,7 @@
 import type { DaemonController } from "@lab/browser-protocol";
 import type { ImageStore } from "@lab/context";
-import {
-  type BrowserAgentContext,
-  executeBrowserTask,
-} from "@lab/subagents/browser";
+import { executeBrowserTask } from "@lab/subagents/browser/executor";
+import type { BrowserAgentContext } from "@lab/subagents/browser/types";
 import type { LanguageModel } from "ai";
 import { tool } from "ai";
 import { z } from "zod";

@@ -3,16 +3,13 @@ import type { FrameReceiver, FrameReceiverConfig } from "../types/session";
 
 export type { FrameReceiver, FrameReceiverConfig } from "../types/session";
 
-const DEFAULT_WS_HOST = "browser";
-
 export const createFrameReceiver = (
   port: number,
   onFrame: (frame: string, timestamp: number) => void,
   onClose: () => void,
-  config?: FrameReceiverConfig
+  config: FrameReceiverConfig
 ): FrameReceiver => {
-  const wsHost = config?.wsHost ?? DEFAULT_WS_HOST;
-  const ws = new WebSocket(`ws://${wsHost}:${port}`);
+  const ws = new WebSocket(`${config.wsUrl}:${port}`);
 
   const handleMessage = (event: MessageEvent) => {
     const data = event.data.toString();

@@ -1,7 +1,9 @@
 "use client";
 
 import { Bot } from "lucide-react";
-import { ContentError, ContentText, getString } from "../shared";
+import { ContentError } from "../shared/content-error";
+import { ContentText } from "../shared/content-text";
+import { getString } from "../shared/get-input";
 import type { ToolRendererProps } from "../types";
 
 function TaskRenderer({ input, output, error, status }: ToolRendererProps) {

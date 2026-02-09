@@ -12,7 +12,7 @@ import {
 import { schema } from "@lab/multiplayer-sdk";
 import { createPublisher, type WebSocketData } from "@lab/multiplayer-server";
 import { isHttpMethod, isRouteModule } from "@lab/router";
-import type { Server as BunServer } from "bun";
+import { type Server as BunServer, FileSystemRouter, serve } from "bun";
 import { SERVER } from "../config/constants";
 import { widelog } from "../logging";
 import type { BrowserServiceManager } from "../managers/browser-service.manager";
@@ -38,7 +38,7 @@ import {
 } from "../websocket/websocket-handler";
 
 interface ApiServerConfig {
-  proxyBaseDomain: string;
+  proxyBaseUrl: string;
   opencodeUrl: string;
   github: {
     clientId?: string;
@@ -64,8 +64,7 @@ interface ApiServerServices {
 export class ApiServer {
   private server: BunServer<unknown> | null = null;
   private publisher: Publisher | null = null;
-  // biome-ignore lint/correctness/noUndeclaredVariables: Bun global
-  private readonly router = new Bun.FileSystemRouter({
+  private readonly router = new FileSystemRouter({
     dir: join(import.meta.dirname, "../routes"),
     style: "nextjs",
   });
@@ -88,9 +87,8 @@ export class ApiServer {
     return this.server;
   }
 
-  // biome-ignore lint/suspicious/useAwait: method sets up server infrastructure
-  async start(port: string): Promise<Publisher> {
-    const { proxyBaseDomain, opencodeUrl, github, frontendUrl } = this.config;
+  start(port: string): Promise<Publisher> {
+    const { proxyBaseUrl, opencodeUrl, github, frontendUrl } = this.config;
     const {
       browserService,
       sessionLifecycle,
@@ -122,7 +120,7 @@ export class ApiServer {
       publisher: this.publisher,
       logMonitor,
       imageStore,
-      proxyBaseDomain,
+      proxyBaseUrl,
       sessionStateStore,
       githubClientId: github.clientId,
       githubClientSecret: github.clientSecret,
@@ -135,7 +133,7 @@ export class ApiServer {
       publisher: this.publisher,
       opencode,
       logMonitor,
-      proxyBaseDomain,
+      proxyBaseUrl,
       sessionStateStore,
     });
 
@@ -143,12 +141,11 @@ export class ApiServer {
       browserService: browserService.service,
       opencode,
       logMonitor,
-      proxyBaseDomain,
+      proxyBaseUrl,
       sessionStateStore,
     });
 
-    // biome-ignore lint/correctness/noUndeclaredVariables: Bun global
-    this.server = Bun.serve<WebSocketData<Auth>>({
+    this.server = serve<WebSocketData<Auth>>({
       port,
       idleTimeout: SERVER.IDLE_TIMEOUT_SECONDS,
       websocket: websocketHandler,
@@ -204,7 +201,7 @@ export class ApiServer {
       });
     });
 
-    return this.publisher;
+    return Promise.resolve(this.publisher);
   }
 
   private handleRouteRequest(

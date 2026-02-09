@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { widelog } from "../logging";
-import { orchestrate } from "../orchestration";
+import { orchestrate } from "../orchestration/orchestration.service";
 import { parseRequestBody } from "../shared/validation";
 import type { Handler, RouteContextFor } from "../types/route";
 

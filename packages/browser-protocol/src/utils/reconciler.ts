@@ -82,10 +82,14 @@ export const createReconciler = (
 
     if (session.lastUrl && session.lastUrl !== "about:blank") {
       await daemonController.navigate(sessionId, session.lastUrl);
-    } else if (!session.lastUrl && config.getFirstExposedPort) {
+    } else if (
+      !session.lastUrl &&
+      config.getFirstExposedPort &&
+      config.getInitialNavigationUrl
+    ) {
       const port = await config.getFirstExposedPort(sessionId);
       if (port) {
-        const url = `http://${sessionId}--${port}:${port}/`;
+        const url = await config.getInitialNavigationUrl(sessionId, port);
         await daemonController.navigate(sessionId, url);
       }
     }

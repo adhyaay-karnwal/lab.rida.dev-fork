@@ -7,7 +7,7 @@ import {
   withCors,
 } from "@lab/http-utilities";
 import { isHttpMethod, isRouteModule } from "@lab/router";
-import type { Server as BunServer } from "bun";
+import { type Server as BunServer, FileSystemRouter, serve } from "bun";
 import { TIMING } from "../config/constants";
 import { AppError } from "../shared/errors";
 import type { DaemonManager } from "../types/daemon";
@@ -20,8 +20,7 @@ interface BrowserDaemonServerConfig {
 
 export class BrowserDaemonServer {
   private server: BunServer<unknown> | null = null;
-  // biome-ignore lint/correctness/noUndeclaredVariables: Bun global
-  private readonly router = new Bun.FileSystemRouter({
+  private readonly router = new FileSystemRouter({
     dir: join(import.meta.dirname, "../routes"),
     style: "nextjs",
   });
@@ -36,8 +35,7 @@ export class BrowserDaemonServer {
     const { daemonManager, widelog } = this.config;
     const routeContext: RouteContext = { daemonManager, widelog };
 
-    // biome-ignore lint/correctness/noUndeclaredVariables: Bun global
-    this.server = Bun.serve({
+    this.server = serve({
       port,
       idleTimeout: TIMING.IDLE_TIMEOUT_SECONDS,
       fetch: (request): Promise<Response> => {

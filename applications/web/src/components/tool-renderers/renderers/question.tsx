@@ -4,7 +4,7 @@ import { Check, Loader2, X } from "lucide-react";
 import { createContext, type ReactNode, use, useState } from "react";
 import { tv } from "tailwind-variants";
 import { useQuestionActions } from "@/lib/question-context";
-import { getArray, getString } from "../shared";
+import { getArray, getString } from "../shared/get-input";
 import type { ToolRendererProps } from "../types";
 
 interface QuestionOption {

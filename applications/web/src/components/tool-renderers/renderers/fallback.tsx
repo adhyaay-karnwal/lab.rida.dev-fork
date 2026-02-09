@@ -1,6 +1,6 @@
 "use client";
 
-import { ContentError } from "../shared";
+import { ContentError } from "../shared/content-error";
 import type { ToolRendererProps } from "../types";
 
 function flattenInput(input: Record<string, unknown>): string {

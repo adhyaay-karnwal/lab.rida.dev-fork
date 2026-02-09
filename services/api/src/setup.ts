@@ -61,20 +61,20 @@ export const setup = (({ env }) => {
 
   const redis = new RedisClient(env.REDIS_URL);
   const sessionStateStore = new SessionStateStore(redis);
-  const proxyManager = new ProxyManager(env.PROXY_BASE_DOMAIN, redis);
+  const proxyManager = new ProxyManager(env.PROXY_BASE_URL, redis);
 
   const deferredPublisher = new DeferredPublisher();
 
   const browserService = new BrowserServiceManager(
     {
       apiUrl: env.BROWSER_API_URL,
-      wsHost: env.BROWSER_WS_HOST,
+      wsUrl: env.BROWSER_WS_URL,
+      containerScheme: env.CONTAINER_SCHEME,
       cleanupDelayMs: env.BROWSER_CLEANUP_DELAY_MS,
       reconcileIntervalMs: env.RECONCILE_INTERVAL_MS,
       maxRetries: env.MAX_DAEMON_RETRIES,
-      proxyContainerName: env.PROXY_CONTAINER_NAME,
-      proxyPort: env.PROXY_PORT,
-      proxyBaseDomain: env.PROXY_BASE_DOMAIN,
+      proxyInternalUrl: env.PROXY_INTERNAL_URL,
+      proxyBaseUrl: env.PROXY_BASE_URL,
     },
     deferredPublisher
   );
@@ -106,7 +106,7 @@ export const setup = (({ env }) => {
 
   const server = new ApiServer(
     {
-      proxyBaseDomain: env.PROXY_BASE_DOMAIN,
+      proxyBaseUrl: env.PROXY_BASE_URL,
       opencodeUrl: env.OPENCODE_URL,
       github: {
         clientId: env.GITHUB_CLIENT_ID,

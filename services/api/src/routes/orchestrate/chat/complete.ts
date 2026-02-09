@@ -1,6 +1,6 @@
 import { z } from "zod";
 import { widelog } from "../../../logging";
-import { chatOrchestrate } from "../../../orchestration/chat-orchestrator";
+import { chatOrchestrate } from "../../../orchestration/chat-orchestrator/execute";
 import {
   getConversationHistory,
   saveOrchestratorMessage,

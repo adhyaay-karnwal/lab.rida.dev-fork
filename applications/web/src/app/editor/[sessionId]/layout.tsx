@@ -35,14 +35,20 @@ function useSessionData(sessionId: string) {
 }
 
 function useSessionContainers(sessionId: string) {
+  const isOptimistic = sessionId === "new";
+
   const { data: initialContainers } = useSWR(
-    sessionId !== "new" ? `sessionContainers-${sessionId}` : null,
+    isOptimistic ? null : `sessionContainers-${sessionId}`,
     () =>
       fetchChannelSnapshot<SessionContainer[]>("sessionContainers", sessionId)
   );
 
   const { useChannel } = useMultiplayer();
-  const liveContainers = useChannel("sessionContainers", { uuid: sessionId });
+  const liveContainers = useChannel(
+    "sessionContainers",
+    { uuid: sessionId },
+    { enabled: !isOptimistic }
+  );
 
   return liveContainers.length > 0 ? liveContainers : (initialContainers ?? []);
 }

@@ -20,14 +20,10 @@ const patchSessionSchema = z.object({
 function buildContainerUrls(
   sessionId: string,
   ports: Record<string, number>,
-  proxyBaseDomain: string
+  proxyBaseUrl: string
 ): string[] {
   return Object.keys(ports).map((containerPort) =>
-    formatProxyUrl(
-      sessionId,
-      Number.parseInt(containerPort, 10),
-      proxyBaseDomain
-    )
+    formatProxyUrl(sessionId, Number.parseInt(containerPort, 10), proxyBaseUrl)
   );
 }
 
@@ -51,7 +47,7 @@ const GET = withParams<{ sessionId: string }, SessionReadContext>(
           container.runtimeId
         );
         const urls = info?.ports
-          ? buildContainerUrls(sessionId, info.ports, ctx.proxyBaseDomain)
+          ? buildContainerUrls(sessionId, info.ports, ctx.proxyBaseUrl)
           : [];
         return { ...container, info, urls };
       })

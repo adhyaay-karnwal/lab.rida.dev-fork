@@ -17,13 +17,14 @@ const label = tv({
 function FormInputLabel({
   children,
   required,
+  htmlFor,
 }: {
   children: ReactNode;
   required?: boolean;
+  htmlFor?: string;
 }) {
   return (
-    // biome-ignore lint/a11y/noLabelWithoutControl: label wraps input via children
-    <label className={label()}>
+    <label className={label()} htmlFor={htmlFor}>
       {children}
       {required && <span className="ml-0.5 text-text-muted">*</span>}
     </label>

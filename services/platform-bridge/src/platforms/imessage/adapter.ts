@@ -44,6 +44,70 @@ class IMessageAdapter implements PlatformAdapter {
     });
   }
 
+  private getSkipReason(message: Message): string | null {
+    if (message.isFromMe) {
+      return "skipped_from_me";
+    }
+    if (!this.shouldMonitor(message.chatId)) {
+      return "skipped_not_monitored";
+    }
+    if (!this.handler) {
+      return "skipped_no_handler";
+    }
+    if (!message.text) {
+      return "skipped_no_text";
+    }
+    return null;
+  }
+
+  private async dispatchMessage(message: Message, text: string): Promise<void> {
+    const history = await this.getConversationHistory(message.chatId);
+
+    await this.handler?.({
+      platform: "imessage",
+      chatId: message.chatId,
+      userId: message.sender,
+      messageId: message.guid,
+      content: text,
+      timestamp: new Date(message.date),
+      metadata: {
+        isGroupChat: message.isGroupChat,
+        senderName: message.sender,
+        conversationHistory: history,
+      },
+    });
+  }
+
+  private handleIncomingMessage(
+    eventName: string,
+    message: Message
+  ): Promise<void> {
+    return widelog.context(async () => {
+      widelog.set("event_name", eventName);
+      widelog.set("guid", message.guid);
+      widelog.set("text_preview", message.text?.slice(0, 50) ?? "");
+      widelog.set("is_from_me", message.isFromMe);
+      widelog.set("chat_id", message.chatId);
+
+      const skipReason = this.getSkipReason(message);
+      if (skipReason) {
+        widelog.set("outcome", skipReason);
+        widelog.flush();
+        return;
+      }
+
+      try {
+        await this.dispatchMessage(message, message.text as string);
+        widelog.set("outcome", "success");
+      } catch (error) {
+        widelog.set("outcome", "error");
+        widelog.errorFields(error);
+      } finally {
+        widelog.flush();
+      }
+    });
+  }
+
   startListening(handler: MessageHandler): Promise<void> {
     return widelog.context(async () => {
       widelog.set("event_name", "imessage.start_listening");
@@ -60,120 +124,16 @@ class IMessageAdapter implements PlatformAdapter {
 
         await this.sdk.startWatching({
           onNewMessage: (message: Message) => {
-            // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
-            return widelog.context(async () => {
-              widelog.set("event_name", "imessage.message_received");
-              widelog.set("guid", message.guid);
-              widelog.set("text_preview", message.text?.slice(0, 50) ?? "");
-              widelog.set("is_from_me", message.isFromMe);
-              widelog.set("chat_id", message.chatId);
-
-              if (message.isFromMe) {
-                widelog.set("outcome", "skipped_from_me");
-                widelog.flush();
-                return;
-              }
-              if (!this.shouldMonitor(message.chatId)) {
-                widelog.set("outcome", "skipped_not_monitored");
-                widelog.flush();
-                return;
-              }
-              if (!this.handler) {
-                widelog.set("outcome", "skipped_no_handler");
-                widelog.flush();
-                return;
-              }
-              if (!message.text) {
-                widelog.set("outcome", "skipped_no_text");
-                widelog.flush();
-                return;
-              }
-
-              try {
-                const history = await this.getConversationHistory(
-                  message.chatId
-                );
-
-                await this.handler({
-                  platform: "imessage",
-                  chatId: message.chatId,
-                  userId: message.sender,
-                  messageId: message.guid,
-                  content: message.text,
-                  timestamp: new Date(message.date),
-                  metadata: {
-                    isGroupChat: message.isGroupChat,
-                    senderName: message.sender,
-                    conversationHistory: history,
-                  },
-                });
-
-                widelog.set("outcome", "success");
-              } catch (error) {
-                widelog.set("outcome", "error");
-                widelog.errorFields(error);
-              } finally {
-                widelog.flush();
-              }
-            });
+            return this.handleIncomingMessage(
+              "imessage.message_received",
+              message
+            );
           },
           onGroupMessage: (message: Message) => {
-            // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
-            return widelog.context(async () => {
-              widelog.set("event_name", "imessage.group_message_received");
-              widelog.set("guid", message.guid);
-              widelog.set("text_preview", message.text?.slice(0, 50) ?? "");
-              widelog.set("is_from_me", message.isFromMe);
-              widelog.set("chat_id", message.chatId);
-
-              if (message.isFromMe) {
-                widelog.set("outcome", "skipped_from_me");
-                widelog.flush();
-                return;
-              }
-              if (!this.shouldMonitor(message.chatId)) {
-                widelog.set("outcome", "skipped_not_monitored");
-                widelog.flush();
-                return;
-              }
-              if (!this.handler) {
-                widelog.set("outcome", "skipped_no_handler");
-                widelog.flush();
-                return;
-              }
-              if (!message.text) {
-                widelog.set("outcome", "skipped_no_text");
-                widelog.flush();
-                return;
-              }
-
-              try {
-                const history = await this.getConversationHistory(
-                  message.chatId
-                );
-
-                await this.handler({
-                  platform: "imessage",
-                  chatId: message.chatId,
-                  userId: message.sender,
-                  messageId: message.guid,
-                  content: message.text,
-                  timestamp: new Date(message.date),
-                  metadata: {
-                    isGroupChat: message.isGroupChat,
-                    senderName: message.sender,
-                    conversationHistory: history,
-                  },
-                });
-
-                widelog.set("outcome", "success");
-              } catch (error) {
-                widelog.set("outcome", "error");
-                widelog.errorFields(error);
-              } finally {
-                widelog.flush();
-              }
-            });
+            return this.handleIncomingMessage(
+              "imessage.group_message_received",
+              message
+            );
           },
           onError: (error: Error) => {
             widelog.context(() => {

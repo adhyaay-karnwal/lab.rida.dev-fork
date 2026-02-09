@@ -8,9 +8,11 @@ export function formatUniqueHostname(
 export function formatProxyUrl(
   sessionId: string,
   port: number,
-  baseDomain: string
+  baseUrl: string
 ): string {
-  return `http://${sessionId}--${port}.${baseDomain}`;
+  const url = new URL(baseUrl);
+  url.hostname = `${sessionId}--${port}.${url.hostname}`;
+  return url.origin;
 }
 
 export function formatNetworkAlias(sessionId: string, port: number): string {

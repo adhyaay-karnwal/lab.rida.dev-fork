@@ -8,11 +8,11 @@ interface ClusterRegistration {
 }
 
 export class ProxyManager {
-  private readonly proxyBaseDomain: string;
+  private readonly proxyBaseUrl: string;
   private readonly redis: RedisClient;
 
-  constructor(proxyBaseDomain: string, redis: RedisClient) {
-    this.proxyBaseDomain = proxyBaseDomain;
+  constructor(proxyBaseUrl: string, redis: RedisClient) {
+    this.proxyBaseUrl = proxyBaseUrl;
     this.redis = redis;
   }
 
@@ -38,7 +38,7 @@ export class ProxyManager {
             const port = Number.parseInt(portStr, 10);
             routes.push({
               containerPort: port,
-              url: formatProxyUrl(clusterId, port, this.proxyBaseDomain),
+              url: formatProxyUrl(clusterId, port, this.proxyBaseUrl),
             });
           }
         }

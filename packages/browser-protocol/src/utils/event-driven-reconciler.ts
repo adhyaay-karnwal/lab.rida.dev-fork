@@ -118,7 +118,54 @@ export const createEventDrivenReconciler = (
     await reconcileSession(sessionId);
   };
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
+  const handleDaemonReady = async (
+    sessionId: string,
+    session: BrowserSessionState,
+    data: DaemonEvent["data"]
+  ): Promise<void> => {
+    if (session.currentState !== "starting") {
+      return;
+    }
+
+    const port = data?.port ?? session.streamPort;
+    await updateCurrentState(sessionId, "running", { streamPort: port });
+
+    if (session.lastUrl && session.lastUrl !== "about:blank") {
+      await daemonController.navigate(sessionId, session.lastUrl);
+      return;
+    }
+
+    if (session.lastUrl || !config.getFirstExposedPort) {
+      return;
+    }
+
+    const exposedPort = await config.getFirstExposedPort(sessionId);
+    if (!(exposedPort && config.getInitialNavigationUrl)) {
+      return;
+    }
+
+    if (config.waitForService) {
+      await config.waitForService(sessionId, exposedPort);
+    }
+
+    const url = await config.getInitialNavigationUrl(sessionId, exposedPort);
+    await daemonController.navigate(sessionId, url);
+  };
+
+  const handleDaemonStopped = async (sessionId: string): Promise<void> => {
+    await updateCurrentState(sessionId, "stopped", {
+      streamPort: null,
+      retryCount: 0,
+    });
+
+    const updatedSession = await stateStore.getState(sessionId);
+    if (updatedSession?.desiredState !== "running") {
+      return;
+    }
+
+    await reconcileSession(sessionId);
+  };
+
   const handleDaemonEvent = async (event: DaemonEvent): Promise<void> => {
     const { sessionId, type, data } = event;
     const session = await stateStore.getState(sessionId);
@@ -130,54 +177,13 @@ export const createEventDrivenReconciler = (
       case "daemon:started":
         break;
 
-      case "daemon:ready": {
-        if (session.currentState !== "starting") {
-          return;
-        }
-
-        const port = data?.port ?? session.streamPort;
-        await updateCurrentState(sessionId, "running", { streamPort: port });
-
-        if (session.lastUrl && session.lastUrl !== "about:blank") {
-          await daemonController.navigate(sessionId, session.lastUrl);
-          return;
-        }
-
-        if (session.lastUrl || !config.getFirstExposedPort) {
-          return;
-        }
-
-        const exposedPort = await config.getFirstExposedPort(sessionId);
-        if (!(exposedPort && config.getInitialNavigationUrl)) {
-          return;
-        }
-
-        if (config.waitForService) {
-          await config.waitForService(sessionId, exposedPort);
-        }
-
-        const url = await config.getInitialNavigationUrl(
-          sessionId,
-          exposedPort
-        );
-        await daemonController.navigate(sessionId, url);
+      case "daemon:ready":
+        await handleDaemonReady(sessionId, session, data);
         break;
-      }
 
-      case "daemon:stopped": {
-        await updateCurrentState(sessionId, "stopped", {
-          streamPort: null,
-          retryCount: 0,
-        });
-
-        const updatedSession = await stateStore.getState(sessionId);
-        if (updatedSession?.desiredState !== "running") {
-          return;
-        }
-
-        await reconcileSession(sessionId);
+      case "daemon:stopped":
+        await handleDaemonStopped(sessionId);
         break;
-      }
 
       case "daemon:error": {
         await updateCurrentState(sessionId, "error", {

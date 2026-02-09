@@ -12,15 +12,11 @@ export type { StateStore, StateStoreOptions } from "../types/orchestrator";
 export const createInMemoryStateStore = (): StateStore => {
   const sessions = new Map<string, BrowserSessionState>();
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const getState = async (
-    sessionId: string
-  ): Promise<BrowserSessionState | null> => {
-    return sessions.get(sessionId) ?? null;
+  const getState = (sessionId: string): Promise<BrowserSessionState | null> => {
+    return Promise.resolve(sessions.get(sessionId) ?? null);
   };
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const setState = async (state: BrowserSessionState): Promise<void> => {
+  const setState = (state: BrowserSessionState): Promise<void> => {
     const parsed = BrowserSessionStateSchema.safeParse(state);
     if (!parsed.success) {
       throw BrowserError.validationFailed(
@@ -29,10 +25,10 @@ export const createInMemoryStateStore = (): StateStore => {
       );
     }
     sessions.set(state.sessionId, parsed.data);
+    return Promise.resolve();
   };
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const setDesiredState = async (
+  const setDesiredState = (
     sessionId: string,
     desiredState: DesiredState
   ): Promise<BrowserSessionState> => {
@@ -55,11 +51,10 @@ export const createInMemoryStateStore = (): StateStore => {
         };
 
     sessions.set(sessionId, state);
-    return state;
+    return Promise.resolve(state);
   };
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const setCurrentState = async (
+  const setCurrentState = (
     sessionId: string,
     currentState: CurrentState,
     options: StateStoreOptions = {}
@@ -87,11 +82,10 @@ export const createInMemoryStateStore = (): StateStore => {
     };
 
     sessions.set(sessionId, state);
-    return state;
+    return Promise.resolve(state);
   };
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const transitionState = async (
+  const transitionState = (
     sessionId: string,
     transition: (current: BrowserSessionState) => BrowserSessionState
   ): Promise<BrowserSessionState> => {
@@ -107,21 +101,19 @@ export const createInMemoryStateStore = (): StateStore => {
     }
 
     sessions.set(sessionId, parsed.data);
-    return parsed.data;
+    return Promise.resolve(parsed.data);
   };
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const getAllSessions = async (): Promise<BrowserSessionState[]> => {
-    return Array.from(sessions.values());
+  const getAllSessions = (): Promise<BrowserSessionState[]> => {
+    return Promise.resolve(Array.from(sessions.values()));
   };
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const deleteSession = async (sessionId: string): Promise<void> => {
+  const deleteSession = (sessionId: string): Promise<void> => {
     sessions.delete(sessionId);
+    return Promise.resolve();
   };
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const updateHeartbeat = async (sessionId: string): Promise<void> => {
+  const updateHeartbeat = (sessionId: string): Promise<void> => {
     const existing = sessions.get(sessionId);
     if (!existing) {
       throw BrowserError.sessionNotFound(sessionId);
@@ -132,13 +124,10 @@ export const createInMemoryStateStore = (): StateStore => {
       lastHeartbeat: new Date(),
       updatedAt: new Date(),
     });
+    return Promise.resolve();
   };
 
-  // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-  const setLastUrl = async (
-    sessionId: string,
-    url: string | null
-  ): Promise<void> => {
+  const setLastUrl = (sessionId: string, url: string | null): Promise<void> => {
     const existing = sessions.get(sessionId);
     if (!existing) {
       throw BrowserError.sessionNotFound(sessionId);
@@ -149,6 +138,7 @@ export const createInMemoryStateStore = (): StateStore => {
       lastUrl: url,
       updatedAt: new Date(),
     });
+    return Promise.resolve();
   };
 
   return {

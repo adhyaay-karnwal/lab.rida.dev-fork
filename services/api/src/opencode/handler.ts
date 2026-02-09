@@ -176,12 +176,90 @@ interface OpenCodeProxyDeps {
   sessionStateStore: SessionStateStore;
 }
 
+async function buildDirectoryInjectedBody(
+  request: Request,
+  workspacePath: string
+): Promise<{ body: BodyInit | null; userMessageText: string | null }> {
+  const originalBody = await safeJsonBody(request);
+  return {
+    body: JSON.stringify({ ...originalBody, directory: workspacePath }),
+    userMessageText: null,
+  };
+}
+
+function logSkippedPromptInjection(
+  labSessionId: string | null,
+  isPromptEndpoint: boolean
+): void {
+  widelog.set("opencode.prompt_injection.skipped", true);
+  widelog.set(
+    "opencode.prompt_injection.session_present",
+    Boolean(labSessionId)
+  );
+  widelog.set("opencode.prompt_injection.endpoint_match", isPromptEndpoint);
+}
+
+function buildPromptInjectedBody(
+  originalBody: Record<string, unknown>,
+  composedPrompt: string | null,
+  workspacePath: string | null,
+  userMessageText: string | null
+): { body: BodyInit | null; userMessageText: string | null } {
+  const existingTools =
+    originalBody.tools && typeof originalBody.tools === "object"
+      ? originalBody.tools
+      : {};
+  const tools = { ...existingTools, bash: false };
+
+  if (!composedPrompt) {
+    return {
+      body: JSON.stringify({
+        ...originalBody,
+        directory: workspacePath,
+        tools,
+      }),
+      userMessageText,
+    };
+  }
+
+  const existingSystem = originalBody.system ?? "";
+  const combinedSystem =
+    composedPrompt + (existingSystem ? `\n\n${existingSystem}` : "");
+
+  return {
+    body: JSON.stringify({
+      ...originalBody,
+      system: combinedSystem,
+      directory: workspacePath,
+      tools,
+    }),
+    userMessageText,
+  };
+}
+
+function logPromptComposition(
+  composedPrompt: string | null,
+  includedFragments: string[]
+): void {
+  widelog.set("opencode.prompt_injection.session_data_found", true);
+  widelog.set(
+    "opencode.prompt_injection.prompt_length",
+    composedPrompt?.length ?? 0
+  );
+  widelog.set(
+    "opencode.prompt_injection.fragment_count",
+    includedFragments.length
+  );
+  for (const fragment of includedFragments) {
+    widelog.append("opencode.prompt_injection.fragments", fragment);
+  }
+}
+
 export function createOpenCodeProxyHandler(
   deps: OpenCodeProxyDeps
 ): OpenCodeProxyHandler {
   const { opencodeUrl, publisher, promptService, sessionStateStore } = deps;
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
   async function buildProxyBody(
     request: Request,
     path: string,
@@ -195,36 +273,21 @@ export function createOpenCodeProxyHandler(
 
     const isSessionCreate = isSessionCreateRequest(path, request.method);
     if (labSessionId && isSessionCreate && workspacePath) {
-      const originalBody = await safeJsonBody(request);
-      return {
-        body: JSON.stringify({ ...originalBody, directory: workspacePath }),
-        userMessageText: null,
-      };
+      return buildDirectoryInjectedBody(request, workspacePath);
     }
 
-    // Handle question reply/reject - inject directory
     const isQuestion = isQuestionRequest(path, request.method);
     if (labSessionId && isQuestion && workspacePath) {
-      const originalBody = await safeJsonBody(request);
-      return {
-        body: JSON.stringify({ ...originalBody, directory: workspacePath }),
-        userMessageText: null,
-      };
+      return buildDirectoryInjectedBody(request, workspacePath);
     }
 
     const isPromptEndpoint = shouldInjectSystemPrompt(path, request.method);
     if (!(labSessionId && isPromptEndpoint)) {
-      widelog.set("opencode.prompt_injection.skipped", true);
-      widelog.set(
-        "opencode.prompt_injection.session_present",
-        Boolean(labSessionId)
-      );
-      widelog.set("opencode.prompt_injection.endpoint_match", isPromptEndpoint);
+      logSkippedPromptInjection(labSessionId, isPromptEndpoint);
       return { body: request.body, userMessageText: null };
     }
 
     const originalBody = await safeJsonBody(request);
-
     const userMessageText = extractUserMessageText(originalBody);
 
     const sessionData = await getSessionData(labSessionId);
@@ -244,49 +307,14 @@ export function createOpenCodeProxyHandler(
 
     const { text: composedPrompt, includedFragments } =
       promptService.compose(promptContext);
-    widelog.set("opencode.prompt_injection.session_data_found", true);
-    widelog.set(
-      "opencode.prompt_injection.prompt_length",
-      composedPrompt?.length ?? 0
+    logPromptComposition(composedPrompt, includedFragments);
+
+    return buildPromptInjectedBody(
+      originalBody,
+      composedPrompt,
+      workspacePath,
+      userMessageText
     );
-    widelog.set(
-      "opencode.prompt_injection.fragment_count",
-      includedFragments.length
-    );
-    for (const fragment of includedFragments) {
-      widelog.append("opencode.prompt_injection.fragments", fragment);
-    }
-
-    const existingTools =
-      originalBody.tools && typeof originalBody.tools === "object"
-        ? originalBody.tools
-        : {};
-    const tools = { ...existingTools, bash: false };
-
-    if (!composedPrompt) {
-      return {
-        body: JSON.stringify({
-          ...originalBody,
-          directory: workspacePath,
-          tools,
-        }),
-        userMessageText,
-      };
-    }
-
-    const existingSystem = originalBody.system ?? "";
-    const combinedSystem =
-      composedPrompt + (existingSystem ? `\n\n${existingSystem}` : "");
-
-    return {
-      body: JSON.stringify({
-        ...originalBody,
-        system: combinedSystem,
-        directory: workspacePath,
-        tools,
-      }),
-      userMessageText,
-    };
   }
 
   function buildTargetUrl(

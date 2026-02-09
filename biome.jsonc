@@ -7,5 +7,17 @@
   ],
   "files": {
     "includes": ["!!containers"]
-  }
+  },
+  "overrides": [
+    {
+      "includes": ["**/src/index.ts"],
+      "linter": {
+        "rules": {
+          "performance": {
+            "noBarrelFile": "off"
+          }
+        }
+      }
+    }
+  ]
 }

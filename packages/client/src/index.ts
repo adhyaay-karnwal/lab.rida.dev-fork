@@ -1,4 +1,3 @@
-// biome-ignore lint/performance/noBarrelFile: entrypoint
 export { type Client, type ClientConfig, createClient } from "./client";
 export type {
   Container,

@@ -1,6 +1,8 @@
 "use client";
 
-import { ContentDiff, ContentError, getString } from "../shared";
+import { ContentDiff } from "../shared/content-diff";
+import { ContentError } from "../shared/content-error";
+import { getString } from "../shared/get-input";
 import type { ToolRendererProps } from "../types";
 
 function EditRenderer({ input, error }: ToolRendererProps) {

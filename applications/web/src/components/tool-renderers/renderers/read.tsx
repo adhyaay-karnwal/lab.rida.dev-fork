@@ -1,11 +1,9 @@
 "use client";
 
-import {
-  ContentCode,
-  ContentError,
-  getString,
-  parseFileOutput,
-} from "../shared";
+import { ContentCode } from "../shared/content-code";
+import { ContentError } from "../shared/content-error";
+import { getString } from "../shared/get-input";
+import { parseFileOutput } from "../shared/parse-file-output";
 import type { ToolRendererProps } from "../types";
 
 function ReadRenderer({ input, output, error, status }: ToolRendererProps) {

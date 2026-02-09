@@ -82,11 +82,9 @@ export async function findAllProjectsWithContainers() {
     if (!container) {
       container = {
         id: row.containerId,
-        // biome-ignore lint/style/noNonNullAssertion: row always has image when containerId exists
-        image: row.containerImage!,
+        image: row.containerImage ?? "",
         hostname: row.containerHostname,
-        // biome-ignore lint/style/noNonNullAssertion: row always has isWorkspace when containerId exists
-        isWorkspace: row.containerIsWorkspace!,
+        isWorkspace: row.containerIsWorkspace ?? false,
         ports: [],
         dependencies: [],
       };

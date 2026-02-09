@@ -38,7 +38,7 @@ const POST = withParams<{ projectId: string }, OrchestrationContext>(
       sessionLifecycle: context.sessionLifecycle,
       poolManager: context.poolManager,
       publisher: context.publisher,
-      proxyBaseDomain: context.proxyBaseDomain,
+      proxyBaseUrl: context.proxyBaseUrl,
     });
 
     widelog.set("session.id", result.session.id);

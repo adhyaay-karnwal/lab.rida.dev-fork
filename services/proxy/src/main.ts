@@ -1,3 +1,4 @@
+import { serve } from "bun";
 import { TIMING } from "./config/constants";
 import type { env } from "./env";
 import { widelog } from "./logging";
@@ -13,11 +14,96 @@ interface MainOptions {
 
 type MainFunction = (options: MainOptions) => unknown;
 
+function loggedClientError(
+  statusCode: number,
+  outcome: string,
+  message: string
+): Response {
+  widelog.set("status_code", statusCode);
+  widelog.set("outcome", outcome);
+  return new Response(message, { status: statusCode });
+}
+
+async function resolveUpstreamForRequest(host: string) {
+  const parsed = parseSubdomain(host);
+  if (!parsed) {
+    return {
+      error: loggedClientError(
+        400,
+        "client_error",
+        "Bad Request: Invalid subdomain format"
+      ),
+    };
+  }
+
+  const { sessionId, port } = parsed;
+  widelog.set("session_id", sessionId);
+  widelog.set("upstream_port", port);
+
+  const upstream = await resolveUpstream(sessionId, port);
+  if (!upstream) {
+    return {
+      error: loggedClientError(
+        404,
+        "not_found",
+        "Not Found: Session or port not available"
+      ),
+    };
+  }
+
+  return { upstream };
+}
+
+function tryWebSocketUpgrade<
+  T extends {
+    upgrade: (req: Request, opts: { data: WebSocketData }) => boolean;
+  },
+>(
+  request: Request,
+  server: T,
+  upstream: { hostname: string; port: number }
+): Response | undefined {
+  const url = new URL(request.url);
+  const wsScheme = url.protocol === "https:" ? "wss:" : "ws:";
+  const success = server.upgrade(request, {
+    data: {
+      upstream,
+      upstreamWs: null,
+      path: url.pathname + url.search,
+      wsScheme,
+      pendingMessages: [],
+    },
+  });
+  if (success) {
+    widelog.set("outcome", "ws_upgrade");
+    return undefined;
+  }
+  widelog.set("status_code", 500);
+  widelog.set("outcome", "ws_upgrade_failed");
+  return new Response("WebSocket upgrade failed", { status: 500 });
+}
+
+function buildCorsProxyResponse(response: Response): Response {
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders())) {
+    headers.set(key, value);
+  }
+
+  const finalResponse = new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+
+  widelog.set("status_code", finalResponse.status);
+  widelog.set("outcome", "success");
+  return finalResponse;
+}
+
 export const main = (({ extras }) => {
   const { port } = extras;
 
-  // biome-ignore lint/correctness/noUndeclaredVariables: Bun global
-  const server = Bun.serve<WebSocketData>({
+  const server = serve<WebSocketData>({
     port,
     idleTimeout: TIMING.IDLE_TIMEOUT_SECONDS,
     fetch(request, server) {
@@ -31,7 +117,6 @@ export const main = (({ extras }) => {
         return new Response(null, { status: 204, headers: corsHeaders() });
       }
 
-      // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
       return widelog.context(async () => {
         widelog.set("method", request.method);
         widelog.set("path", url.pathname);
@@ -40,71 +125,30 @@ export const main = (({ extras }) => {
         try {
           const host = request.headers.get("host");
           if (!host) {
-            widelog.set("status_code", 400);
-            widelog.set("outcome", "client_error");
-            return new Response("Bad Request: Missing Host header", {
-              status: 400,
-            });
+            return loggedClientError(
+              400,
+              "client_error",
+              "Bad Request: Missing Host header"
+            );
           }
 
-          const parsed = parseSubdomain(host);
-          if (!parsed) {
-            widelog.set("status_code", 400);
-            widelog.set("outcome", "client_error");
-            return new Response("Bad Request: Invalid subdomain format", {
-              status: 400,
-            });
+          const result = await resolveUpstreamForRequest(host);
+          if (result.error) {
+            return result.error;
           }
-
-          const { sessionId, port } = parsed;
-          widelog.set("session_id", sessionId);
-          widelog.set("upstream_port", port);
-
-          const upstream = await resolveUpstream(sessionId, port);
-          if (!upstream) {
-            widelog.set("status_code", 404);
-            widelog.set("outcome", "not_found");
-            return new Response("Not Found: Session or port not available", {
-              status: 404,
-            });
-          }
+          const { upstream } = result;
 
           const upgradeHeader = request.headers.get("upgrade");
           if (upgradeHeader?.toLowerCase() === "websocket") {
-            const url = new URL(request.url);
-            const success = server.upgrade(request, {
-              data: {
-                upstream,
-                upstreamWs: null,
-                path: url.pathname + url.search,
-                pendingMessages: [],
-              },
-            });
-            if (success) {
-              widelog.set("outcome", "ws_upgrade");
-              return undefined as unknown as Response;
-            }
-            widelog.set("status_code", 500);
-            widelog.set("outcome", "ws_upgrade_failed");
-            return new Response("WebSocket upgrade failed", { status: 500 });
+            return tryWebSocketUpgrade(
+              request,
+              server,
+              upstream
+            ) as unknown as Response;
           }
 
           const response = await proxyRequest(request, upstream, 0);
-
-          const headers = new Headers(response.headers);
-          for (const [key, value] of Object.entries(corsHeaders())) {
-            headers.set(key, value);
-          }
-
-          const finalResponse = new Response(response.body, {
-            status: response.status,
-            statusText: response.statusText,
-            headers,
-          });
-
-          widelog.set("status_code", finalResponse.status);
-          widelog.set("outcome", "success");
-          return finalResponse;
+          return buildCorsProxyResponse(response);
         } catch (error) {
           widelog.set("outcome", "error");
           widelog.errorFields(error);
@@ -117,8 +161,8 @@ export const main = (({ extras }) => {
     },
     websocket: {
       open(ws) {
-        const { upstream, path } = ws.data;
-        const upstreamUrl = `ws://${upstream.hostname}:${upstream.port}${path}`;
+        const { upstream, path, wsScheme } = ws.data;
+        const upstreamUrl = `${wsScheme}//${upstream.hostname}:${upstream.port}${path}`;
 
         const upstreamWs = new WebSocket(upstreamUrl);
         ws.data.upstreamWs = upstreamWs;

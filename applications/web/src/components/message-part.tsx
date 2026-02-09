@@ -16,9 +16,10 @@ import {
   FilePlus,
   Loader2,
 } from "lucide-react";
+import Image from "next/image";
 import { createContext, memo, type ReactNode, use, useState } from "react";
 import { tv } from "tailwind-variants";
-import { getToolRenderer } from "@/components/tool-renderers";
+import { getToolRenderer } from "@/components/tool-renderers/registry";
 import { cn } from "@/lib/cn";
 import {
   isAgentPart,
@@ -406,12 +407,13 @@ const MessagePartFile = memo(function MessagePartFile({
   if (isImage && part.url) {
     return (
       <div className="px-4 py-3" data-opencode-component="File">
-        {/* biome-ignore lint/performance/noImgElement: dynamic user-uploaded image */}
-        {/* biome-ignore lint/correctness/useImageSize: dimensions handled by CSS */}
-        <img
+        <Image
           alt={part.filename ?? "Uploaded image"}
           className="max-h-48 max-w-xs rounded border border-border"
+          height={192}
           src={part.url}
+          unoptimized
+          width={320}
         />
         {part.filename && (
           <span className="mt-1 block text-text-muted text-xs">

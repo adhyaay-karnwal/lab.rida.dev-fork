@@ -73,17 +73,16 @@ export function createDaemonManager(
   discoverExistingSessions(recoveryCallbacks);
 
   return {
-    // biome-ignore lint/suspicious/useAwait: interface requires Promise return type
-    async start(sessionId: string): Promise<StartResult> {
+    start(sessionId: string): Promise<StartResult> {
       const existing = activeSessions.get(sessionId);
       if (existing !== undefined) {
-        return {
-          type: "already_running",
+        return Promise.resolve({
+          type: "already_running" as const,
           sessionId,
           port: existing.streamPort,
           cdpPort: existing.cdpPort,
           ready: true,
-        };
+        });
       }
 
       const { streamPort, cdpPort } = allocatePorts();
@@ -180,13 +179,13 @@ export function createDaemonManager(
         });
       });
 
-      return {
-        type: "started",
+      return Promise.resolve({
+        type: "started" as const,
         sessionId,
         port: streamPort,
         cdpPort,
         ready: false,
-      };
+      });
     },
 
     stop(sessionId: string): StopResult {

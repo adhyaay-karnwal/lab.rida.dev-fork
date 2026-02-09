@@ -1,23 +1,21 @@
 import type { ImageStore } from "@lab/context";
-import type { ImageAnalyzerContext } from "@lab/subagents/vision";
+import type { ImageAnalyzerContext } from "@lab/subagents/vision/types";
 import type { LanguageModel } from "ai";
 import type { BrowserServiceManager } from "../../managers/browser-service.manager";
 import type { PoolManager } from "../../managers/pool.manager";
 import type { SessionLifecycleManager } from "../../managers/session-lifecycle.manager";
 import type { SessionStateStore } from "../../state/session-state-store";
 import type { OpencodeClient, Publisher } from "../../types/dependencies";
-import {
-  createCreateSessionTool,
-  createGetSessionMessagesTool,
-  createGetSessionScreenshotTool,
-  createGetSessionStatusTool,
-  createRunBrowserTaskTool,
-  createSearchSessionsTool,
-  createSendMessageToSessionTool,
-  getContainersTool,
-  listProjectsTool,
-  listSessionsTool,
-} from "../tools";
+import { createCreateSessionTool } from "../tools/create-session";
+import { getContainersTool } from "../tools/get-containers";
+import { createGetSessionMessagesTool } from "../tools/get-session-messages";
+import { createGetSessionScreenshotTool } from "../tools/get-session-screenshot";
+import { createGetSessionStatusTool } from "../tools/get-session-status";
+import { listProjectsTool } from "../tools/list-projects";
+import { listSessionsTool } from "../tools/list-sessions";
+import { createRunBrowserTaskTool } from "../tools/run-browser-task";
+import { createSearchSessionsTool } from "../tools/search-sessions";
+import { createSendMessageToSessionTool } from "../tools/send-message-to-session";
 
 interface BuildOrchestratorToolsConfig {
   browserService: BrowserServiceManager;
@@ -86,7 +84,9 @@ export async function buildOrchestratorTools(
   };
 
   if (toolsConfig.visionContext) {
-    const { createAnalyzeImageTool } = await import("@lab/subagents/vision");
+    const { createAnalyzeImageTool } = await import(
+      "@lab/subagents/vision/tool"
+    );
     return {
       ...baseTools,
       analyzeImage: createAnalyzeImageTool(toolsConfig.visionContext),

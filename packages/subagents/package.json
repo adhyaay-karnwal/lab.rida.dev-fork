@@ -14,13 +14,13 @@
       "types": "./src/index.ts",
       "default": "./src/index.ts"
     },
-    "./browser": {
-      "types": "./src/browser/index.ts",
-      "default": "./src/browser/index.ts"
+    "./browser/*": {
+      "types": "./src/browser/*.ts",
+      "default": "./src/browser/*.ts"
     },
-    "./vision": {
-      "types": "./src/vision/index.ts",
-      "default": "./src/vision/index.ts"
+    "./vision/*": {
+      "types": "./src/vision/*.ts",
+      "default": "./src/vision/*.ts"
     },
     "./*": {
       "types": "./src/*.ts",

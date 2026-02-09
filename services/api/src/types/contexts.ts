@@ -36,7 +36,7 @@ export interface GithubContext {
 }
 
 export interface ProxyContext {
-  proxyBaseDomain: string;
+  proxyBaseUrl: string;
 }
 
 export interface PromptContext {

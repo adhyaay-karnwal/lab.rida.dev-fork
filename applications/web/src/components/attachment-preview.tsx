@@ -1,6 +1,7 @@
 "use client";
 
 import { AlertCircle, Loader2, X } from "lucide-react";
+import Image from "next/image";
 import { cn } from "@/lib/cn";
 import type { Attachment } from "@/lib/use-attachments";
 
@@ -48,12 +49,12 @@ function AttachmentPreviewItem({ attachment, onRemove }: ItemProps) {
       )}
 
       {!(isLoading || isError) && attachment.preview && (
-        // biome-ignore lint/performance/noImgElement: dynamic preview image from blob URL
-        // biome-ignore lint/correctness/useImageSize: dimensions handled by CSS
-        <img
+        <Image
           alt={attachment.file.name}
-          className="h-full w-full object-cover"
+          className="object-cover"
+          fill
           src={attachment.preview}
+          unoptimized
         />
       )}
 

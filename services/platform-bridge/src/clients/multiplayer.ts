@@ -247,45 +247,50 @@ class MultiplayerClient {
     });
   }
 
+  private parseChannelEvent(
+    raw: unknown
+  ): { channel: string; data: unknown } | null {
+    if (!isServerMessage(raw)) {
+      return null;
+    }
+    if (raw.type !== "event") {
+      return null;
+    }
+    if (!("channel" in raw) || typeof raw.channel !== "string") {
+      return null;
+    }
+    if (!("data" in raw)) {
+      return null;
+    }
+    return { channel: raw.channel, data: raw.data };
+  }
+
+  private dispatchChannelEvent(channel: string, data: unknown): void {
+    if (isSessionCompleteChannel(channel) && isSessionCompleteEvent(data)) {
+      const listeners = this.sessionCompleteSubscriptions.get(channel);
+      if (listeners) {
+        for (const listener of listeners) {
+          listener(data);
+        }
+      }
+      return;
+    }
+
+    const listeners = this.subscriptions.get(channel);
+    if (listeners && isSessionMessage(data)) {
+      for (const listener of listeners) {
+        listener(data);
+      }
+    }
+  }
+
   private handleMessage(event: MessageEvent): void {
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
     widelog.context(() => {
       try {
         const parsed: unknown = JSON.parse(event.data);
-
-        if (!isServerMessage(parsed)) {
-          return;
-        }
-        if (parsed.type === "pong") {
-          return;
-        }
-        if (parsed.type !== "event") {
-          return;
-        }
-        if (!("channel" in parsed) || typeof parsed.channel !== "string") {
-          return;
-        }
-        if (!("data" in parsed)) {
-          return;
-        }
-
-        const { channel, data } = parsed;
-
-        if (isSessionCompleteChannel(channel) && isSessionCompleteEvent(data)) {
-          const listeners = this.sessionCompleteSubscriptions.get(channel);
-          if (listeners) {
-            for (const listener of listeners) {
-              listener(data);
-            }
-          }
-          return;
-        }
-
-        const listeners = this.subscriptions.get(channel);
-        if (listeners && isSessionMessage(data)) {
-          for (const listener of listeners) {
-            listener(data);
-          }
+        const channelEvent = this.parseChannelEvent(parsed);
+        if (channelEvent) {
+          this.dispatchChannelEvent(channelEvent.channel, channelEvent.data);
         }
       } catch (error) {
         widelog.set("event_name", "multiplayer.malformed_message");

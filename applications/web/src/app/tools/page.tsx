@@ -1,8 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import type { ToolRendererProps } from "@/components/tool-renderers";
-import { getToolRenderer } from "@/components/tool-renderers";
+import { getToolRenderer } from "@/components/tool-renderers/registry";
+import type { ToolRendererProps } from "@/components/tool-renderers/types";
 import { cn } from "@/lib/cn";
 
 interface MockTool {

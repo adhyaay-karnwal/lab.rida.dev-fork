@@ -1,3 +1,4 @@
+import { serve } from "bun";
 import type { env } from "./env";
 import { widelog } from "./logging";
 import type { setup } from "./setup";
@@ -18,8 +19,7 @@ export const main = (({ env, extras }) => {
 
     await server.connect(transport);
 
-    // biome-ignore lint/correctness/noUndeclaredVariables: Bun global
-    const httpServer = Bun.serve({
+    const httpServer = serve({
       port: env.MCP_PORT,
       fetch: (request) => transport.handleRequest(request),
     });

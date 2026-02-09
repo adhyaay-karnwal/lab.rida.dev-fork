@@ -35,91 +35,111 @@ const setNested = (
   current[lastPart] = value;
 };
 
+interface Aggregators {
+  event: Record<string, unknown>;
+  counters: Record<string, number>;
+  arrays: Record<string, FieldValue[]>;
+  maxValues: Record<string, number>;
+  minValues: Record<string, number>;
+  timers: Record<string, { start: number; accumulated: number }>;
+}
+
+const createAggregators = (): Aggregators => ({
+  event: Object.create(null),
+  counters: Object.create(null),
+  arrays: Object.create(null),
+  maxValues: Object.create(null),
+  minValues: Object.create(null),
+  timers: Object.create(null),
+});
+
+const processOperation = (
+  agg: Aggregators,
+  entry: Context["operations"][number]
+): void => {
+  switch (entry.operation) {
+    case "set":
+      setNested(agg.event, entry.key, entry.value);
+      break;
+    case "count":
+      agg.counters[entry.key] = (agg.counters[entry.key] ?? 0) + entry.amount;
+      break;
+    case "append": {
+      const existing = agg.arrays[entry.key] ?? [];
+      existing.push(entry.value);
+      agg.arrays[entry.key] = existing;
+      break;
+    }
+    case "max": {
+      const current = agg.maxValues[entry.key];
+      if (current === undefined || entry.value > current) {
+        agg.maxValues[entry.key] = entry.value;
+      }
+      break;
+    }
+    case "min": {
+      const current = agg.minValues[entry.key];
+      if (current === undefined || entry.value < current) {
+        agg.minValues[entry.key] = entry.value;
+      }
+      break;
+    }
+    case "time.start": {
+      const existing = agg.timers[entry.key] ?? { start: 0, accumulated: 0 };
+      existing.start = entry.time;
+      agg.timers[entry.key] = existing;
+      break;
+    }
+    case "time.stop": {
+      const timer = agg.timers[entry.key];
+      if (timer && timer.start > 0) {
+        timer.accumulated += entry.time - timer.start;
+        timer.start = 0;
+      }
+      break;
+    }
+
+    default:
+      break;
+  }
+};
+
+const mergeAggregators = (agg: Aggregators): void => {
+  for (const key of Object.keys(agg.counters)) {
+    setNested(agg.event, key, agg.counters[key]);
+  }
+  for (const key of Object.keys(agg.arrays)) {
+    setNested(agg.event, key, agg.arrays[key]);
+  }
+  for (const key of Object.keys(agg.maxValues)) {
+    setNested(agg.event, key, agg.maxValues[key]);
+  }
+  for (const key of Object.keys(agg.minValues)) {
+    setNested(agg.event, key, agg.minValues[key]);
+  }
+  for (const key of Object.keys(agg.timers)) {
+    const timer = agg.timers[key];
+    if (timer) {
+      setNested(agg.event, key, Math.round(timer.accumulated * 100) / 100);
+    }
+  }
+};
+
 export const flush = (
   context: Context | undefined
-): // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
-Record<string, unknown> => {
+): Record<string, unknown> => {
   if (!context) {
     return {};
   }
 
-  const event: Record<string, unknown> = Object.create(null);
-  const counters: Record<string, number> = Object.create(null);
-  const arrays: Record<string, FieldValue[]> = Object.create(null);
-  const maxValues: Record<string, number> = Object.create(null);
-  const minValues: Record<string, number> = Object.create(null);
-  const timers: Record<string, { start: number; accumulated: number }> =
-    Object.create(null);
+  const agg = createAggregators();
 
   for (const entry of context.operations) {
-    switch (entry.operation) {
-      case "set":
-        setNested(event, entry.key, entry.value);
-        break;
-      case "count":
-        counters[entry.key] = (counters[entry.key] ?? 0) + entry.amount;
-        break;
-      case "append": {
-        if (!arrays[entry.key]) {
-          arrays[entry.key] = [];
-        }
-        arrays[entry.key].push(entry.value);
-        break;
-      }
-      case "max": {
-        const current = maxValues[entry.key];
-        if (current === undefined || entry.value > current) {
-          maxValues[entry.key] = entry.value;
-        }
-        break;
-      }
-      case "min": {
-        const current = minValues[entry.key];
-        if (current === undefined || entry.value < current) {
-          minValues[entry.key] = entry.value;
-        }
-        break;
-      }
-      case "time.start": {
-        if (!timers[entry.key]) {
-          timers[entry.key] = { start: 0, accumulated: 0 };
-        }
-        timers[entry.key].start = entry.time;
-        break;
-      }
-      case "time.stop": {
-        const timer = timers[entry.key];
-        if (timer && timer.start > 0) {
-          timer.accumulated += entry.time - timer.start;
-          timer.start = 0;
-        }
-        break;
-      }
-
-      default:
-        break;
-    }
+    processOperation(agg, entry);
   }
 
-  for (const key of Object.keys(counters)) {
-    setNested(event, key, counters[key]);
-  }
-  for (const key of Object.keys(arrays)) {
-    setNested(event, key, arrays[key]);
-  }
-  for (const key of Object.keys(maxValues)) {
-    setNested(event, key, maxValues[key]);
-  }
-  for (const key of Object.keys(minValues)) {
-    setNested(event, key, minValues[key]);
-  }
-  for (const key of Object.keys(timers)) {
-    const timer = timers[key];
-    if (timer) {
-      setNested(event, key, Math.round(timer.accumulated * 100) / 100);
-    }
-  }
+  mergeAggregators(agg);
 
   context.operations.length = 0;
-  return event;
+  return agg.event;
 };

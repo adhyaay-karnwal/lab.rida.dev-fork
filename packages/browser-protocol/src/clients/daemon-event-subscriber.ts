@@ -59,7 +59,48 @@ export const createDaemonEventSubscriber = (
     }
   };
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
+  const parseSseLine = (line: string) => {
+    if (!line.startsWith("data: ")) {
+      return;
+    }
+    try {
+      const parsed: unknown = JSON.parse(line.slice(6));
+      if (isDaemonEvent(parsed)) {
+        emit(parsed);
+      }
+    } catch {
+      // Ignore parse errors
+    }
+  };
+
+  const readSseStream = async (body: ReadableStream<Uint8Array>) => {
+    const reader = body.getReader();
+    const decoder = new TextDecoder();
+    let buffer = "";
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() ?? "";
+
+      for (const line of lines) {
+        parseSseLine(line);
+      }
+    }
+  };
+
+  const handleConnectionError = (error: unknown) => {
+    const isAbortError = error instanceof Error && error.name === "AbortError";
+    if (!isAbortError) {
+      console.warn("[DaemonEventSubscriber] Connection error:", error);
+    }
+  };
+
   const connect = async () => {
     if (state.abortController) {
       return;
@@ -78,41 +119,9 @@ export const createDaemonEventSubscriber = (
       }
 
       console.log("[DaemonEventSubscriber] Connected to", url);
-
-      const reader = response.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() ?? "";
-
-        for (const line of lines) {
-          if (!line.startsWith("data: ")) {
-            continue;
-          }
-          try {
-            const parsed: unknown = JSON.parse(line.slice(6));
-            if (isDaemonEvent(parsed)) {
-              emit(parsed);
-            }
-          } catch {
-            // Ignore parse errors
-          }
-        }
-      }
+      await readSseStream(response.body);
     } catch (error) {
-      const isAbortError =
-        error instanceof Error && error.name === "AbortError";
-      if (!isAbortError) {
-        console.warn("[DaemonEventSubscriber] Connection error:", error);
-      }
+      handleConnectionError(error);
     } finally {
       state.abortController = null;
       if (state.shouldReconnect) {

@@ -2,7 +2,7 @@
 
 import { CheckCircle2, Circle, CircleDot } from "lucide-react";
 import { tv } from "tailwind-variants";
-import { getArray, getString } from "../shared";
+import { getArray, getString } from "../shared/get-input";
 import type { ToolRendererProps } from "../types";
 
 interface TodoItem {

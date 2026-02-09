@@ -1,7 +1,7 @@
-// biome-ignore lint/performance/noBarrelFile: entrypoint
 export {
   createDaemonController,
   type DaemonControllerConfig,
+  executeCommand,
 } from "./clients/daemon-controller";
 export {
   createDaemonEventSubscriber,
@@ -60,7 +60,6 @@ export {
   createEventDrivenReconciler,
   type EventDrivenReconciler,
 } from "./utils/event-driven-reconciler";
-export { executeCommand } from "./utils/execute-command";
 export { createOrchestrator } from "./utils/orchestrator";
 export { createReconciler } from "./utils/reconciler";
 export { createSessionManager } from "./utils/session-manager";

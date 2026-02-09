@@ -415,8 +415,57 @@ export function useAgent(labSessionId: string): UseAgentResult {
       });
     };
 
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
-    const processEvent = (event: Event) => {
+    const clearSendingTimeout = () => {
+      if (sendingTimeoutRef.current) {
+        clearTimeout(sendingTimeoutRef.current);
+        sendingTimeoutRef.current = null;
+      }
+    };
+
+    const handleSessionIdle = () => {
+      clearSendingTimeout();
+      setIsSending(false);
+      setSessionStatus({ type: "idle" });
+
+      if (streamedMessagesRef.current) {
+        mutate(
+          getAgentMessagesKey(labSessionId),
+          (current: SessionData | null | undefined) => {
+            if (!current) {
+              return current;
+            }
+            return {
+              ...current,
+              messages: streamedMessagesRef.current ?? [],
+            };
+          },
+          { revalidate: false }
+        );
+      }
+      setStreamedMessages(null);
+    };
+
+    const handleQuestionAsked = (event: Event) => {
+      const extracted = extractQuestionAskedEvent(event);
+      if (extracted) {
+        setQuestionRequests((previous) =>
+          new Map(previous).set(extracted.callID, extracted.requestID)
+        );
+      }
+    };
+
+    const handleQuestionResolved = (event: Event) => {
+      const callID = extractQuestionCallID(event);
+      if (callID) {
+        setQuestionRequests((previous) => {
+          const next = new Map(previous);
+          next.delete(callID);
+          return next;
+        });
+      }
+    };
+
+    const isForCurrentSession = (event: Event): boolean => {
       const sessionSpecificEvents = [
         "message.updated",
         "message.part.updated",
@@ -428,83 +477,36 @@ export function useAgent(labSessionId: string): UseAgentResult {
         "question.rejected",
       ];
 
-      if (sessionSpecificEvents.includes(event.type)) {
-        const eventSessionId = getSessionIdFromEvent(event);
-        if (eventSessionId !== currentOpencodeSessionRef.current) {
-          return;
-        }
+      if (!sessionSpecificEvents.includes(event.type)) {
+        return true;
       }
+      return getSessionIdFromEvent(event) === currentOpencodeSessionRef.current;
+    };
 
-      if (event.type === "message.updated") {
-        handleMessageUpdated(event.properties.info);
+    const handleSessionError = () => {
+      clearSendingTimeout();
+      setIsSending(false);
+      setSessionStatus({ type: "error" });
+    };
+
+    const eventHandlers: Record<string, (event: Event) => void> = {
+      "message.updated": (event) => handleMessageUpdated(event.properties.info),
+      "message.part.updated": (event) =>
+        handleMessagePartUpdated(event.properties.part),
+      "session.status": (event) =>
+        setSessionStatus(event.properties.status as SessionStatus),
+      "session.idle": handleSessionIdle,
+      "session.error": handleSessionError,
+      "question.asked": handleQuestionAsked,
+      "question.replied": handleQuestionResolved,
+      "question.rejected": handleQuestionResolved,
+    };
+
+    const processEvent = (event: Event) => {
+      if (!isForCurrentSession(event)) {
+        return;
       }
-
-      if (event.type === "message.part.updated") {
-        handleMessagePartUpdated(event.properties.part);
-      }
-
-      if (event.type === "session.status") {
-        const status = event.properties.status as SessionStatus;
-        setSessionStatus(status);
-      }
-
-      if (event.type === "session.idle") {
-        if (sendingTimeoutRef.current) {
-          clearTimeout(sendingTimeoutRef.current);
-          sendingTimeoutRef.current = null;
-        }
-        setIsSending(false);
-        setSessionStatus({ type: "idle" });
-
-        if (streamedMessagesRef.current) {
-          mutate(
-            getAgentMessagesKey(labSessionId),
-            (current: SessionData | null | undefined) => {
-              if (!current) {
-                return current;
-              }
-              return {
-                ...current,
-                messages: streamedMessagesRef.current ?? [],
-              };
-            },
-            { revalidate: false }
-          );
-        }
-        setStreamedMessages(null);
-      }
-
-      if (event.type === "session.error") {
-        if (sendingTimeoutRef.current) {
-          clearTimeout(sendingTimeoutRef.current);
-          sendingTimeoutRef.current = null;
-        }
-        setIsSending(false);
-        setSessionStatus({ type: "error" });
-      }
-
-      if (event.type === "question.asked") {
-        const extracted = extractQuestionAskedEvent(event);
-        if (extracted) {
-          setQuestionRequests((previous) =>
-            new Map(previous).set(extracted.callID, extracted.requestID)
-          );
-        }
-      }
-
-      if (
-        event.type === "question.replied" ||
-        event.type === "question.rejected"
-      ) {
-        const callID = extractQuestionCallID(event);
-        if (callID) {
-          setQuestionRequests((previous) => {
-            const next = new Map(previous);
-            next.delete(callID);
-            return next;
-          });
-        }
-      }
+      eventHandlers[event.type]?.(event);
     };
 
     return subscribe(processEvent);

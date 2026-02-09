@@ -41,6 +41,3 @@ export async function prepareContainerData(
 
   return { containerDefinition, ports, envVars, containerWorkspace };
 }
-
-// biome-ignore lint/performance/noBarrelFile: re-export needed for module consumers
-export { resolveStartOrder } from "@lab/sandbox-sdk";

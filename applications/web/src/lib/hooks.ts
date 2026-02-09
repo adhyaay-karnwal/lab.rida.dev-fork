@@ -102,17 +102,14 @@ export function useSession(sessionId: string | null) {
 
   return useSWR(
     sessionId ? `session-${sessionId}` : null,
-    () => {
-      if (!sessionId) {
-        return null;
-      }
-      return api.sessions.get(sessionId);
-    },
-    {
-      revalidateOnMount: !isOptimistic,
-      revalidateOnFocus: !isOptimistic,
-      revalidateOnReconnect: !isOptimistic,
-    }
+    isOptimistic
+      ? null
+      : () => {
+          if (!sessionId) {
+            return null;
+          }
+          return api.sessions.get(sessionId);
+        }
   );
 }
 

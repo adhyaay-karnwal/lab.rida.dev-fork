@@ -14,12 +14,75 @@ const inputSchema = z.object({
     .describe("Maximum number of results to return"),
 });
 
+interface ScoredResult {
+  relevantContent: string;
+  score: number;
+}
+
+function scoreMessageContent(
+  rawMessages: unknown,
+  queryLower: string,
+  queryLength: number
+): ScoredResult | null {
+  const messages = Array.isArray(rawMessages)
+    ? rawMessages.filter(isOpencodeMessage)
+    : [];
+
+  for (const msg of messages) {
+    const text = extractTextFromParts(msg.parts);
+    const textLower = text.toLowerCase();
+    if (textLower.includes(queryLower)) {
+      const index = textLower.indexOf(queryLower);
+      const start = Math.max(0, index - 50);
+      const end = Math.min(text.length, index + queryLength + 50);
+      return {
+        relevantContent: `...${text.slice(start, end)}...`,
+        score: 1.0,
+      };
+    }
+  }
+  return null;
+}
+
+function scoreRow(
+  row: { title: string | null; projectName: string },
+  rawMessages: unknown,
+  queryLower: string,
+  queryLength: number
+): ScoredResult {
+  let relevantContent = "";
+  let score = 0;
+
+  if (row.title?.toLowerCase().includes(queryLower)) {
+    relevantContent = row.title;
+    score = 0.8;
+  }
+
+  if (row.projectName.toLowerCase().includes(queryLower)) {
+    score = Math.max(score, 0.6);
+  }
+
+  if (rawMessages) {
+    const messageResult = scoreMessageContent(
+      rawMessages,
+      queryLower,
+      queryLength
+    );
+    if (messageResult) {
+      relevantContent = messageResult.relevantContent;
+      score = messageResult.score;
+    }
+  }
+
+  return { relevantContent, score };
+}
+
 export function createSearchSessionsTool(opencode: OpencodeClient) {
   return tool({
     description:
       "Searches across session titles and conversation content to find relevant sessions. Returns matching sessions with relevant content snippets.",
     inputSchema,
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
+
     execute: async ({ query, limit }) => {
       const searchLimit = limit ?? 5;
 
@@ -52,43 +115,17 @@ export function createSearchSessionsTool(opencode: OpencodeClient) {
         score: number;
       }> = [];
 
-      for (let i = 0; i < rows.length; i++) {
+      for (const [i, row] of rows.entries()) {
         if (results.length >= searchLimit) {
           break;
         }
 
-        // biome-ignore lint/style/noNonNullAssertion: index is within bounds
-        const row = rows[i]!;
-        let relevantContent = "";
-        let score = 0;
-
-        if (row.title?.toLowerCase().includes(queryLower)) {
-          relevantContent = row.title;
-          score = 0.8;
-        }
-
-        if (row.projectName.toLowerCase().includes(queryLower)) {
-          score = Math.max(score, 0.6);
-        }
-
-        const rawMessages = allMessages[i];
-        if (rawMessages) {
-          const messages = Array.isArray(rawMessages)
-            ? rawMessages.filter(isOpencodeMessage)
-            : [];
-
-          for (const msg of messages) {
-            const text = extractTextFromParts(msg.parts);
-            if (text.toLowerCase().includes(queryLower)) {
-              const index = text.toLowerCase().indexOf(queryLower);
-              const start = Math.max(0, index - 50);
-              const end = Math.min(text.length, index + query.length + 50);
-              relevantContent = `...${text.slice(start, end)}...`;
-              score = 1.0;
-              break;
-            }
-          }
-        }
+        const { relevantContent, score } = scoreRow(
+          row,
+          allMessages[i],
+          queryLower,
+          query.length
+        );
 
         if (score > 0) {
           results.push({

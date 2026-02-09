@@ -189,6 +189,35 @@ const setupBrowserEvents = (sessionId: string, browser: BrowserManager) => {
   }
 };
 
+const processSocketLine = async (
+  line: string,
+  browser: BrowserManager,
+  socket: { write: (data: string) => void }
+): Promise<void> => {
+  if (!line.trim()) {
+    return;
+  }
+
+  try {
+    const parseResult = parseCommand(line);
+
+    if (!parseResult.success) {
+      socket.write(
+        `${serializeResponse(
+          errorResponse(parseResult.id ?? "unknown", parseResult.error)
+        )}\n`
+      );
+      return;
+    }
+
+    const response = await executeCommand(parseResult.command, browser);
+    socket.write(`${serializeResponse(response)}\n`);
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    socket.write(`${serializeResponse(errorResponse("error", message))}\n`);
+  }
+};
+
 const createSocketServer = (
   sessionId: string,
   socketPath: string,
@@ -201,37 +230,13 @@ const createSocketServer = (
   const server = createServer((socket) => {
     let buffer = "";
 
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
     socket.on("data", async (chunk) => {
       buffer += chunk.toString();
       const lines = buffer.split("\n");
       buffer = lines.pop() ?? "";
 
       for (const line of lines) {
-        if (!line.trim()) {
-          continue;
-        }
-
-        try {
-          const parseResult = parseCommand(line);
-
-          if (!parseResult.success) {
-            socket.write(
-              `${serializeResponse(
-                errorResponse(parseResult.id ?? "unknown", parseResult.error)
-              )}\n`
-            );
-            continue;
-          }
-
-          const response = await executeCommand(parseResult.command, browser);
-          socket.write(`${serializeResponse(response)}\n`);
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          socket.write(
-            `${serializeResponse(errorResponse("error", message))}\n`
-          );
-        }
+        await processSocketLine(line, browser, socket);
       }
     });
 
@@ -349,105 +354,111 @@ const startWorker = async (config: DaemonWorkerConfig) => {
     process.exit(1);
   }
 
-  // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
+  const handleNavigate = (data: { url: string }) => {
+    if (!state.browser) {
+      return;
+    }
+    state.browser
+      .getPage()
+      .goto(data.url)
+      .catch((err: Error) => {
+        self.postMessage({
+          type: "log",
+          data: {
+            level: "error",
+            event_name: "daemon_worker.navigation_error",
+            session_id: sessionId,
+            error: err.message,
+          },
+        });
+      });
+  };
+
+  const handleExecuteCommand = async (data: {
+    requestId: string;
+    command: { id: string };
+  }) => {
+    const { requestId, command } = data;
+    if (!state.browser) {
+      postMessage({
+        type: "commandResponse",
+        data: {
+          requestId,
+          response: {
+            id: command.id,
+            success: false,
+            error: "Browser not initialized",
+          },
+        },
+      });
+      return;
+    }
+    try {
+      const response = await executeCommand(command, state.browser);
+      postMessage({
+        type: "commandResponse",
+        data: { requestId, response },
+      });
+    } catch (err) {
+      const message = err instanceof Error ? err.message : String(err);
+      postMessage({
+        type: "commandResponse",
+        data: {
+          requestId,
+          response: { id: command.id, success: false, error: message },
+        },
+      });
+    }
+  };
+
+  const handleTerminate = () => {
+    self.postMessage({
+      type: "log",
+      data: {
+        level: "info",
+        event_name: "daemon_worker.terminating",
+        session_id: sessionId,
+      },
+    });
+    state.socketServer?.close();
+    state.streamServer?.stop();
+    state.browser?.close();
+
+    const filesToClean = [socketPath, pidFile, streamPortFile, cdpPortFile];
+    try {
+      for (const file of filesToClean) {
+        if (existsSync(file)) {
+          unlinkSync(file);
+        }
+      }
+    } catch (error) {
+      self.postMessage({
+        type: "log",
+        data: {
+          level: "error",
+          event_name: "daemon_worker.termination_error",
+          session_id: sessionId,
+          error: error instanceof Error ? error.message : String(error),
+        },
+      });
+    }
+
+    process.exit(0);
+  };
+
   self.onmessage = async (event: MessageEvent) => {
     const { type, data } = event.data;
 
     switch (type) {
       case "navigate":
-        if (state.browser) {
-          state.browser
-            .getPage()
-            .goto(data.url)
-            .catch((err: Error) => {
-              self.postMessage({
-                type: "log",
-                data: {
-                  level: "error",
-                  event_name: "daemon_worker.navigation_error",
-                  session_id: sessionId,
-                  error: err.message,
-                },
-              });
-            });
-        }
+        handleNavigate(data);
         break;
-
-      case "executeCommand": {
-        const { requestId, command } = data;
-        if (!state.browser) {
-          postMessage({
-            type: "commandResponse",
-            data: {
-              requestId,
-              response: {
-                id: command.id,
-                success: false,
-                error: "Browser not initialized",
-              },
-            },
-          });
-          break;
-        }
-        try {
-          const response = await executeCommand(command, state.browser);
-          postMessage({
-            type: "commandResponse",
-            data: { requestId, response },
-          });
-        } catch (err) {
-          const message = err instanceof Error ? err.message : String(err);
-          postMessage({
-            type: "commandResponse",
-            data: {
-              requestId,
-              response: { id: command.id, success: false, error: message },
-            },
-          });
-        }
+      case "executeCommand":
+        await handleExecuteCommand(data);
         break;
-      }
-
       case "terminate":
-        self.postMessage({
-          type: "log",
-          data: {
-            level: "info",
-            event_name: "daemon_worker.terminating",
-            session_id: sessionId,
-          },
-        });
-        state.socketServer?.close();
-        state.streamServer?.stop();
-        state.browser?.close();
-        try {
-          if (existsSync(socketPath)) {
-            unlinkSync(socketPath);
-          }
-          if (existsSync(pidFile)) {
-            unlinkSync(pidFile);
-          }
-          if (existsSync(streamPortFile)) {
-            unlinkSync(streamPortFile);
-          }
-          if (existsSync(cdpPortFile)) {
-            unlinkSync(cdpPortFile);
-          }
-        } catch (error) {
-          self.postMessage({
-            type: "log",
-            data: {
-              level: "error",
-              event_name: "daemon_worker.termination_error",
-              session_id: sessionId,
-              error: error instanceof Error ? error.message : String(error),
-            },
-          });
-        }
-
-        process.exit(0);
+        handleTerminate();
         break;
-
       default:
         break;
     }

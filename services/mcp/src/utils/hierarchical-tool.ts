@@ -55,7 +55,41 @@ function parseCommandPath(input: string): string[] {
 /**
  * Format help text for a node's available subcommands
  */
-// biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
+
+function extractParamDescription(paramSchema: unknown): string {
+  const schema = paramSchema as Record<string, unknown>;
+  const zodDef = schema?._zod as Record<string, unknown> | undefined;
+  const zodDefInner = zodDef?.def as Record<string, unknown> | undefined;
+  return (
+    (schema?.description as string) ||
+    (zodDefInner?.description as string) ||
+    ""
+  );
+}
+
+function formatChildEntry(name: string, child: CommandNode): string[] {
+  const hasChildren = child.children && Object.keys(child.children).length > 0;
+  const hasHandler = !!child.handler;
+
+  if (hasChildren && !hasHandler) {
+    return [`- \`${name}\`: ${child.description} (has subcommands)`];
+  }
+
+  if (hasHandler && child.params) {
+    const lines = [
+      `- \`${name}\`: ${child.description}`,
+      "  Parameters (pass in subcommandArguments):",
+    ];
+    for (const [paramName, paramSchema] of Object.entries(child.params)) {
+      const desc = extractParamDescription(paramSchema);
+      lines.push(`    - \`${paramName}\`: ${desc}`);
+    }
+    return lines;
+  }
+
+  return [`- \`${name}\`: ${child.description}`];
+}
+
 function formatHelp(
   node: CommandNode | Record<string, CommandNode>,
   currentPath: string[]
@@ -77,31 +111,7 @@ function formatHelp(
   }
 
   for (const [name, child] of Object.entries(children)) {
-    const hasChildren =
-      child.children && Object.keys(child.children).length > 0;
-    const hasHandler = !!child.handler;
-
-    if (hasChildren && !hasHandler) {
-      lines.push(`- \`${name}\`: ${child.description} (has subcommands)`);
-    } else if (hasHandler && child.params) {
-      lines.push(`- \`${name}\`: ${child.description}`);
-      lines.push("  Parameters (pass in subcommandArguments):");
-      for (const [paramName, paramSchema] of Object.entries(child.params)) {
-        // Extract description from zod schema if available
-        const schema = paramSchema as Record<string, unknown>;
-        const zodDef = schema?._zod as Record<string, unknown> | undefined;
-        const zodDefInner = zodDef?.def as Record<string, unknown> | undefined;
-        const desc =
-          (schema?.description as string) ||
-          (zodDefInner?.description as string) ||
-          "";
-        lines.push(`    - \`${paramName}\`: ${desc}`);
-      }
-    } else if (hasHandler) {
-      lines.push(`- \`${name}\`: ${child.description}`);
-    } else {
-      lines.push(`- \`${name}\`: ${child.description}`);
-    }
+    lines.push(...formatChildEntry(name, child));
   }
 
   lines.push("");
@@ -181,6 +191,53 @@ function generateCommandId(): string {
   return `mcp-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
+function buildUnknownCommandError(
+  node: CommandNode | Record<string, CommandNode>,
+  remainingPath: string[],
+  traversedPath: string[]
+): ToolResult {
+  const available =
+    "children" in node ? Object.keys(node.children || {}) : Object.keys(node);
+  return {
+    isError: true,
+    content: [
+      {
+        type: "text",
+        text: `Unknown command: '${remainingPath[0]}' at path '${traversedPath.join(" ")}'\nAvailable: ${available.join(", ")}`,
+      },
+    ],
+  };
+}
+
+function executeHandlerNode(
+  commandNode: CommandNode,
+  subcommandArguments: Record<string, unknown> | undefined,
+  context: CommandContext
+): ToolResult | Promise<ToolResult> {
+  const { handler } = commandNode;
+  if (!handler) {
+    return {
+      isError: true,
+      content: [{ type: "text", text: "Command has no handler" }],
+    };
+  }
+
+  const params = subcommandArguments ?? {};
+
+  if (commandNode.params) {
+    const validation = validateParams(params, commandNode.params);
+    if (!validation.success) {
+      return {
+        isError: true,
+        content: [{ type: "text", text: validation.error }],
+      };
+    }
+    return handler(validation.data, context);
+  }
+
+  return handler(params, context);
+}
+
 /**
  * Create and register a hierarchical tool with the MCP server
  */
@@ -206,7 +263,7 @@ export function createHierarchicalTool(
           .describe("Arguments for the subcommand as key-value pairs"),
       },
     },
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
+
     (args) => {
       const { sessionId, command, subcommandArguments } = args as {
         sessionId: string;
@@ -214,12 +271,10 @@ export function createHierarchicalTool(
         subcommandArguments?: Record<string, unknown>;
       };
 
-      // Create context for handlers
       const context: CommandContext = contextFactory
         ? contextFactory(sessionId)
         : { sessionId, generateCommandId };
 
-      // If no command, show top-level categories
       if (!command || command.trim() === "") {
         return {
           content: [{ type: "text", text: formatHelp(tree, []) }],
@@ -229,59 +284,18 @@ export function createHierarchicalTool(
       const path = parseCommandPath(command);
       const { node, remainingPath, traversedPath } = navigateTree(tree, path);
 
-      // If we have remaining path segments, the command path is invalid
       if (remainingPath.length > 0) {
-        const available =
-          "children" in node
-            ? Object.keys(node.children || {})
-            : Object.keys(node);
-        return {
-          isError: true,
-          content: [
-            {
-              type: "text",
-              text: `Unknown command: '${remainingPath[0]}' at path '${traversedPath.join(" ")}'\nAvailable: ${available.join(", ")}`,
-            },
-          ],
-        };
+        return buildUnknownCommandError(node, remainingPath, traversedPath);
       }
 
-      // Check if this is a CommandNode with a handler
       if ("handler" in node && node.handler) {
-        // This is an executable command
-        const commandNode = node as CommandNode;
-        const { handler } = commandNode;
-        if (!handler) {
-          return {
-            isError: true,
-            content: [{ type: "text", text: "Command has no handler" }],
-          };
-        }
-        const params = subcommandArguments ?? {};
-
-        // Validate params if schema exists
-        if (commandNode.params) {
-          const validation = validateParams(params, commandNode.params);
-          if (!validation.success) {
-            return {
-              isError: true,
-              content: [{ type: "text", text: validation.error }],
-            };
-          }
-          return handler(validation.data, context);
-        }
-
-        return handler(params, context);
+        return executeHandlerNode(
+          node as CommandNode,
+          subcommandArguments,
+          context
+        );
       }
 
-      // Node has children but no handler - show available subcommands
-      if ("children" in node && node.children) {
-        return {
-          content: [{ type: "text", text: formatHelp(node, traversedPath) }],
-        };
-      }
-
-      // This is the tree root level
       return {
         content: [{ type: "text", text: formatHelp(node, traversedPath) }],
       };

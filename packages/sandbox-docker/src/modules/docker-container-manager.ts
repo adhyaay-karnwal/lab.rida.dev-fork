@@ -304,8 +304,10 @@ export class DockerContainerManager implements ContainerManager {
 
     while (!streamEnded || pendingChunks.length > 0) {
       if (pendingChunks.length > 0) {
-        // biome-ignore lint/style/noNonNullAssertion: length check guarantees element exists
-        yield pendingChunks.shift()!;
+        const chunk = pendingChunks.shift();
+        if (chunk) {
+          yield chunk;
+        }
         continue;
       }
 

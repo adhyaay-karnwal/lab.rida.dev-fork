@@ -3,10 +3,10 @@ import { z } from "zod";
 import { getPlatformConfig } from "../../config/platforms";
 import { widelog } from "../../logging";
 import {
-  type ChatOrchestratorResult,
   chatOrchestrate,
   chatOrchestrateStream,
-} from "../../orchestration/chat-orchestrator";
+} from "../../orchestration/chat-orchestrator/execute";
+import type { ChatOrchestratorResult } from "../../orchestration/chat-orchestrator/types";
 import {
   getConversationHistory,
   saveOrchestratorMessage,

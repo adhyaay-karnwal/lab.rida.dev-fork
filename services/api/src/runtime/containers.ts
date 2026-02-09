@@ -1,4 +1,4 @@
-import { CircularDependencyError } from "@lab/sandbox-sdk";
+import { CircularDependencyError, resolveStartOrder } from "@lab/sandbox-sdk";
 import type { BrowserService } from "../browser/browser-service";
 import { widelog } from "../logging";
 import { findContainersWithDependencies } from "../repositories/container-dependency.repository";
@@ -20,7 +20,6 @@ import {
   buildContainerNodes,
   type PreparedContainer,
   prepareContainerData,
-  resolveStartOrder,
 } from "./container-preparer";
 import { buildEnvironmentVariables } from "./environment-builder";
 import { createSessionNetwork } from "./network";

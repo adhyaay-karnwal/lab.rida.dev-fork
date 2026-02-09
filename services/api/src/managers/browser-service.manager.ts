@@ -15,13 +15,13 @@ import { InternalError, ServiceUnavailableError } from "../shared/errors";
 
 interface BrowserServiceConfig {
   apiUrl: string;
-  wsHost: string;
+  wsUrl: string;
+  containerScheme: string;
   cleanupDelayMs: number;
   reconcileIntervalMs: number;
   maxRetries: number;
-  proxyContainerName: string;
-  proxyPort: number;
-  proxyBaseDomain: string;
+  proxyInternalUrl: string;
+  proxyBaseUrl: string;
 }
 
 export class BrowserServiceManager {
@@ -75,24 +75,24 @@ export class BrowserServiceManager {
 
     const {
       apiUrl,
-      wsHost,
+      wsUrl,
+      containerScheme,
       cleanupDelayMs,
       reconcileIntervalMs,
       maxRetries,
-      proxyContainerName,
-      proxyPort,
-      proxyBaseDomain,
+      proxyInternalUrl,
+      proxyBaseUrl,
     } = this.config;
 
     this.result = await bootstrapBrowserService({
       browserApiUrl: apiUrl,
-      browserWsHost: wsHost,
+      browserWsUrl: wsUrl,
+      containerScheme,
       cleanupDelayMs,
       reconcileIntervalMs,
       maxRetries,
-      proxyContainerName,
-      proxyPort,
-      proxyBaseDomain,
+      proxyInternalUrl,
+      proxyBaseUrl,
       publishFrame: (sessionId: string, frame: string, timestamp: number) => {
         const now = Date.now();
         const last = this.lastFrameTime.get(sessionId) ?? 0;

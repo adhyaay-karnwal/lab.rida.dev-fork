@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { UrlBar } from "@/components/url-bar";
 
 interface FrameTabContentProps {
@@ -10,6 +10,13 @@ interface FrameTabContentProps {
 export function FrameTabContent({ frameUrl }: FrameTabContentProps) {
   const [isLoading, setIsLoading] = useState(true);
   const [key, setKey] = useState(0);
+
+  const iframeRef = useCallback((node: HTMLIFrameElement | null) => {
+    if (!node) {
+      return;
+    }
+    node.addEventListener("load", () => setIsLoading(false));
+  }, []);
 
   const handleRefresh = () => {
     setIsLoading(true);
@@ -32,11 +39,10 @@ export function FrameTabContent({ frameUrl }: FrameTabContentProps) {
     <div className="flex min-h-0 flex-1 flex-col">
       <UrlBar isLoading={isLoading} onRefresh={handleRefresh} url={frameUrl} />
       <div className="flex grow bg-white">
-        {/* biome-ignore lint/a11y/noNoninteractiveElementInteractions: iframe interaction required */}
         <iframe
           className="flex-1 border-none"
           key={key}
-          onLoad={() => setIsLoading(false)}
+          ref={iframeRef}
           src={frameUrl}
           title="Frame"
         />

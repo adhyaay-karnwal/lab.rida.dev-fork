@@ -5,7 +5,7 @@ import type { ToolContext } from "../types/tool";
 
 interface SessionServicesResponse {
   sessionId: string;
-  proxyBaseDomain: string;
+  proxyBaseUrl: string;
   services: {
     containerId: string;
     runtimeId: string;
@@ -275,7 +275,7 @@ export function container(server: McpServer, { docker, config }: ToolContext) {
         );
       }
 
-      const internalUrl = `http://${args.sessionId}--${args.port}:${args.port}`;
+      const internalUrl = `${config.CONTAINER_SCHEME}//${args.sessionId}--${args.port}:${args.port}`;
 
       return textResult(
         `Internal URL: ${internalUrl}\n\nYou can use this URL with:\n- agent-browser: Navigate to this URL to interact with the service\n- curl/fetch: Make HTTP requests from within the workspace container\n\n This URL is not relevant to the user.`
@@ -312,10 +312,11 @@ export function container(server: McpServer, { docker, config }: ToolContext) {
         return portNotFoundError(args.port, availablePorts);
       }
 
-      const externalUrl = `http://${args.sessionId}--${args.port}.${data.proxyBaseDomain}`;
+      const externalUrl = new URL(data.proxyBaseUrl);
+      externalUrl.hostname = `${args.sessionId}--${args.port}.${externalUrl.hostname}`;
 
       return textResult(
-        `External URL: ${externalUrl}\n\nShare this URL with the user so they can access the service in their browser.`
+        `External URL: ${externalUrl.origin}\n\nShare this URL with the user so they can access the service in their browser.`
       );
     }
   );

@@ -16,7 +16,7 @@ export async function proxyRequest(
   retries = 0
 ): Promise<Response> {
   const url = new URL(request.url);
-  const targetUrl = `http://${upstream.hostname}:${upstream.port}${url.pathname}${url.search}`;
+  const targetUrl = `${url.protocol}//${upstream.hostname}:${upstream.port}${url.pathname}${url.search}`;
 
   const headers = new Headers(request.headers);
   headers.delete("host");

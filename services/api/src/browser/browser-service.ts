@@ -12,7 +12,7 @@ import {
 import { widelog } from "../logging";
 
 interface BrowserServiceConfig {
-  browserWsHost: string;
+  browserWsUrl: string;
   browserDaemonUrl: string;
   cleanupDelayMs: number;
   reconcileIntervalMs: number;
@@ -50,7 +50,7 @@ export const createBrowserService = (
   const { stateStore, daemonController, publishFrame, publishStateChange } =
     deps;
   const {
-    browserWsHost,
+    browserWsUrl,
     browserDaemonUrl,
     cleanupDelayMs,
     reconcileIntervalMs,
@@ -98,7 +98,7 @@ export const createBrowserService = (
             publishFrame(sessionId, frame, timestamp);
           },
           () => frameReceivers.delete(sessionId),
-          { wsHost: browserWsHost }
+          { wsUrl: browserWsUrl }
         );
 
         frameReceivers.set(sessionId, receiver);

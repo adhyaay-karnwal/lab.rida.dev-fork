@@ -28,7 +28,7 @@ interface WebSocketHandlerDeps {
   publisher: Publisher;
   opencode: OpencodeClient;
   logMonitor: LogMonitor;
-  proxyBaseDomain: string;
+  proxyBaseUrl: string;
   sessionStateStore: SessionStateStore;
 }
 
@@ -38,7 +38,7 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
     publisher,
     opencode,
     logMonitor,
-    proxyBaseDomain,
+    proxyBaseUrl,
     sessionStateStore,
   } = deps;
   const sessionSubscribers = new Map<string, Set<object>>();
@@ -63,7 +63,7 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
         if (!params.uuid) {
           throw new ValidationError("Missing uuid parameter");
         }
-        return loadSessionContainers(params.uuid, proxyBaseDomain);
+        return loadSessionContainers(params.uuid, proxyBaseUrl);
       },
     },
     sessionTyping: {

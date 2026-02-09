@@ -3,9 +3,7 @@ export function groupBy<T, K>(
   keyFn: (item: T, index: number) => K
 ): Map<K, T[]> {
   const map = new Map<K, T[]>();
-  for (let i = 0; i < items.length; i++) {
-    // biome-ignore lint/style/noNonNullAssertion: index is within bounds
-    const item = items[i]!;
+  for (const [i, item] of items.entries()) {
     const key = keyFn(item, i);
     const existing = map.get(key) ?? [];
     existing.push(item);

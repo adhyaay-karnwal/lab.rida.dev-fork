@@ -51,7 +51,7 @@ function BrowserCanvasRoot({ sessionId, children }: RootProps) {
   const frameListenersRef = useRef(new Set<(bitmap: ImageBitmap) => void>());
   const { useChannel, useChannelEvent } = useMultiplayer();
 
-  const isActive = subscriberCount > 0;
+  const isActive = subscriberCount > 0 && sessionId !== "new";
 
   const browserState = useChannel(
     "sessionBrowserState",

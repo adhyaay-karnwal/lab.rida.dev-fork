@@ -4,6 +4,7 @@ import {
   type DaemonController,
   type StateStore,
 } from "@lab/browser-protocol";
+import { sleep } from "bun";
 import { TIMING } from "../config/constants";
 import {
   getFirstExposedPort,
@@ -25,13 +26,13 @@ import {
 
 interface BrowserBootstrapConfig {
   browserApiUrl: string;
-  browserWsHost: string;
+  browserWsUrl: string;
+  containerScheme: string;
   cleanupDelayMs: number;
   reconcileIntervalMs: number;
   maxRetries: number;
-  proxyContainerName: string;
-  proxyPort: number;
-  proxyBaseDomain: string;
+  proxyInternalUrl: string;
+  proxyBaseUrl: string;
   publishFrame: (sessionId: string, frame: string, timestamp: number) => void;
   publishStateChange: (sessionId: string, state: BrowserSessionState) => void;
 }
@@ -48,15 +49,17 @@ const stateStore: StateStore = {
   setLastUrl,
 };
 
-async function getInitialNavigationUrl(
-  sessionId: string,
-  _port: number
-): Promise<string> {
-  const service = await getFirstExposedService(sessionId);
-  if (!service) {
-    throw new NotFoundError("Exposed service", sessionId);
-  }
-  return `http://${service.hostname}:${service.port}/`;
+function createGetInitialNavigationUrl(config: BrowserBootstrapConfig) {
+  return async function getInitialNavigationUrl(
+    sessionId: string,
+    _port: number
+  ): Promise<string> {
+    const service = await getFirstExposedService(sessionId);
+    if (!service) {
+      throw new NotFoundError("Exposed service", sessionId);
+    }
+    return `${config.containerScheme}//${service.hostname}:${service.port}/`;
+  };
 }
 
 function createWaitForService(config: BrowserBootstrapConfig) {
@@ -66,8 +69,8 @@ function createWaitForService(config: BrowserBootstrapConfig) {
     timeoutMs = TIMING.SERVICE_WAIT_TIMEOUT_MS,
     intervalMs = TIMING.SERVICE_WAIT_INTERVAL_MS
   ): Promise<void> {
-    const proxyUrl = `http://${config.proxyContainerName}:${config.proxyPort}/`;
-    const hostHeader = `${sessionId}--${port}.${config.proxyBaseDomain}`;
+    const proxyUrl = `${config.proxyInternalUrl}/`;
+    const hostHeader = `${sessionId}--${port}.${new URL(config.proxyBaseUrl).hostname}`;
     const startTime = Date.now();
     let lastStatus: number | string = "no response";
 
@@ -85,8 +88,7 @@ function createWaitForService(config: BrowserBootstrapConfig) {
           return;
         }
       }
-      // biome-ignore lint/correctness/noUndeclaredVariables: Bun global
-      await Bun.sleep(intervalMs);
+      await sleep(intervalMs);
     }
 
     throw new ExternalServiceError(
@@ -110,7 +112,7 @@ export const bootstrapBrowserService = (
 
   const browserService = createBrowserService(
     {
-      browserWsHost: config.browserWsHost,
+      browserWsUrl: config.browserWsUrl,
       browserDaemonUrl: baseUrl,
       cleanupDelayMs: config.cleanupDelayMs,
       reconcileIntervalMs: config.reconcileIntervalMs,
@@ -122,7 +124,7 @@ export const bootstrapBrowserService = (
       publishFrame: config.publishFrame,
       publishStateChange: config.publishStateChange,
       getFirstExposedPort,
-      getInitialNavigationUrl,
+      getInitialNavigationUrl: createGetInitialNavigationUrl(config),
       waitForService: createWaitForService(config),
     }
   );

@@ -1,6 +1,5 @@
 // Types - Container
 
-// biome-ignore lint/performance/noBarrelFile: entrypoint
 export {
   DEFAULT_PORT_RANGE,
   DEFAULT_PROTOCOL,

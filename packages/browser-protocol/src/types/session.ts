@@ -49,5 +49,5 @@ export interface FrameReceiver {
 }
 
 export interface FrameReceiverConfig {
-  wsHost: string;
+  wsUrl: string;
 }

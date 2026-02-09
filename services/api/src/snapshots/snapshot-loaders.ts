@@ -29,7 +29,7 @@ export async function loadSessions() {
 
 export async function loadSessionContainers(
   sessionId: string,
-  proxyBaseDomain: string
+  proxyBaseUrl: string
 ) {
   const rows = await getSessionContainersWithDetails(sessionId);
 
@@ -39,7 +39,7 @@ export async function loadSessionContainers(
       const name = row.image;
       const urls = ports.map(({ port }) => ({
         port,
-        url: formatProxyUrl(sessionId, port, proxyBaseDomain),
+        url: formatProxyUrl(sessionId, port, proxyBaseUrl),
       }));
 
       return {
@@ -153,7 +153,7 @@ export interface SnapshotLoaderDeps {
   browserService: BrowserService;
   opencode: OpencodeClient;
   logMonitor: LogMonitor;
-  proxyBaseDomain: string;
+  proxyBaseUrl: string;
   sessionStateStore: SessionStateStore;
 }
 
@@ -164,7 +164,7 @@ export function createSnapshotLoaders(
     browserService,
     opencode,
     logMonitor,
-    proxyBaseDomain,
+    proxyBaseUrl,
     sessionStateStore,
   } = deps;
 
@@ -177,7 +177,7 @@ export function createSnapshotLoaders(
         : Promise.resolve(null),
     sessionContainers: (session) =>
       session
-        ? loadSessionContainers(session, proxyBaseDomain)
+        ? loadSessionContainers(session, proxyBaseUrl)
         : Promise.resolve(null),
     sessionTyping: () => Promise.resolve([]),
     sessionPromptEngineers: () => Promise.resolve([]),

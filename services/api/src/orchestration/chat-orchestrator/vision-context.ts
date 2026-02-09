@@ -1,4 +1,4 @@
-import type { ImageAnalyzerContext } from "@lab/subagents/vision";
+import type { ImageAnalyzerContext } from "@lab/subagents/vision/types";
 import { widelog } from "../../logging";
 
 // Lazily created ImageAnalyzerContext singleton (promise-based to prevent race conditions)
@@ -12,7 +12,7 @@ export function getVisionContext(): Promise<ImageAnalyzerContext | undefined> {
   visionContextPromise = (async () => {
     try {
       const { createVisionContextFromEnv } = await import(
-        "@lab/subagents/vision"
+        "@lab/subagents/vision/analyzer"
       );
       const ctx = createVisionContextFromEnv();
       widelog.set("orchestration.vision_context.enabled", Boolean(ctx));

@@ -82,9 +82,7 @@ class CompletionListener {
         const threadId = responseSubscriber.getThreadId(sessionId);
         const messagesToSend = [result.message];
 
-        for (let i = 0; i < messagesToSend.length; i++) {
-          // biome-ignore lint/style/noNonNullAssertion: index is within bounds
-          const content = messagesToSend[i]!;
+        for (const [i, content] of messagesToSend.entries()) {
           const isLastMessage = i === messagesToSend.length - 1;
 
           await adapter.sendMessage({

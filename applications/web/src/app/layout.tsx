@@ -1,4 +1,5 @@
 import { Geist, Geist_Mono } from "next/font/google";
+import Script from "next/script";
 import type { ReactNode } from "react";
 import "./globals.css";
 import { prefetchProjects } from "@/lib/api.server";
@@ -30,8 +31,9 @@ export default async function RootLayout({
       suppressHydrationWarning
     >
       <head>
-        {/* biome-ignore lint/security/noDangerouslySetInnerHtml: theme script injection */}
-        <script dangerouslySetInnerHTML={{ __html: themeScript }} />
+        <Script id="theme-script" strategy="beforeInteractive">
+          {themeScript}
+        </Script>
       </head>
       <body className="bg-bg font-sans text-[0.75rem] text-text antialiased">
         <Providers fallback={{ projects }}>{children}</Providers>

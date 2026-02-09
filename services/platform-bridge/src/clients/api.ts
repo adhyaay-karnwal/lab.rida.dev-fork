@@ -144,60 +144,96 @@ class ApiClient {
     return response.json();
   }
 
+  private async processSseDataLine(
+    data: string,
+    currentEvent: string | null,
+    onChunk: (text: string) => Promise<void>
+  ): Promise<ChatResult | null> {
+    const parsed = JSON.parse(data);
+
+    if (currentEvent === "chunk" && parsed.text) {
+      await onChunk(parsed.text);
+    } else if (currentEvent === "done") {
+      return parsed as ChatResult;
+    } else if (currentEvent === "error") {
+      throw new Error(parsed.error || "SSE stream error");
+    }
+
+    return null;
+  }
+
+  private async processSseLine(
+    line: string,
+    state: { currentEvent: string | null; parseErrors: number },
+    onChunk: (text: string) => Promise<void>
+  ): Promise<ChatResult | null> {
+    if (line.startsWith("event: ")) {
+      state.currentEvent = line.slice(7).trim();
+      return null;
+    }
+
+    if (!line.startsWith("data: ")) {
+      return null;
+    }
+
+    try {
+      const result = await this.processSseDataLine(
+        line.slice(6),
+        state.currentEvent,
+        onChunk
+      );
+      return result;
+    } catch (parseError) {
+      if (parseError instanceof SyntaxError) {
+        state.parseErrors++;
+        widelog.set("sse_parse_errors", state.parseErrors);
+        return null;
+      }
+      throw parseError;
+    } finally {
+      state.currentEvent = null;
+    }
+  }
+
+  private async readSseStream(
+    reader: ReadableStreamDefaultReader<Uint8Array>,
+    onChunk: (text: string) => Promise<void>
+  ): Promise<ChatResult | null> {
+    const decoder = new TextDecoder();
+    let buffer = "";
+    let finalResult: ChatResult | null = null;
+    const state = { currentEvent: null as string | null, parseErrors: 0 };
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) {
+        break;
+      }
+
+      buffer += decoder.decode(value, { stream: true });
+      const lines = buffer.split("\n");
+      buffer = lines.pop() || "";
+
+      for (const line of lines) {
+        const result = await this.processSseLine(line, state, onChunk);
+        if (result) {
+          finalResult = result;
+        }
+      }
+    }
+
+    return finalResult;
+  }
+
   private consumeSseStream(
     response: Response,
     onChunk: (text: string) => Promise<void>
   ): Promise<ChatResult> {
-    // biome-ignore lint/complexity/noExcessiveCognitiveComplexity: complex business logic
     return widelog.context(async () => {
       widelog.set("event_name", "api_client.consume_sse_stream");
 
       const reader = response.body?.getReader();
-      const decoder = new TextDecoder();
-      let buffer = "";
-      let finalResult: ChatResult | null = null;
-      let currentEvent: string | null = null;
-      let parseErrors = 0;
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          break;
-        }
-
-        buffer += decoder.decode(value, { stream: true });
-
-        // Process complete lines from the buffer
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || ""; // Keep incomplete line in buffer
-
-        for (const line of lines) {
-          if (line.startsWith("event: ")) {
-            currentEvent = line.slice(7).trim();
-          } else if (line.startsWith("data: ")) {
-            const data = line.slice(6);
-            try {
-              const parsed = JSON.parse(data);
-
-              if (currentEvent === "chunk" && parsed.text) {
-                await onChunk(parsed.text);
-              } else if (currentEvent === "done") {
-                finalResult = parsed;
-              } else if (currentEvent === "error") {
-                throw new Error(parsed.error || "SSE stream error");
-              }
-            } catch (parseError) {
-              if (parseError instanceof SyntaxError) {
-                parseErrors++;
-                widelog.set("sse_parse_errors", parseErrors);
-              } else {
-                throw parseError;
-              }
-            }
-            currentEvent = null;
-          }
-        }
-      }
+      const finalResult = await this.readSseStream(reader, onChunk);
 
       if (!finalResult) {
         widelog.set("outcome", "error");

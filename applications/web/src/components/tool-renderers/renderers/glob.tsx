@@ -1,7 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { ContentError, ContentText, getString, ResultsToggle } from "../shared";
+import { ContentError } from "../shared/content-error";
+import { ContentText } from "../shared/content-text";
+import { getString } from "../shared/get-input";
+import { ResultsToggle } from "../shared/results-toggle";
 import type { ToolRendererProps } from "../types";
 
 function GlobRenderer({ input, output, error, status }: ToolRendererProps) {

@@ -1,7 +1,9 @@
-// biome-ignore lint/performance/noBarrelFile: entrypoint
 export {
-  type BrowserAgentContext,
-  type BrowserTaskResult,
+  type ExecuteBrowserTaskParams,
   executeBrowserTask,
-} from "./browser";
+} from "./browser/executor";
+export type {
+  BrowserAgentContext,
+  BrowserTaskResult,
+} from "./browser/types";
 export type { ExecutionStep, Screenshot, SubAgentResult } from "./types";

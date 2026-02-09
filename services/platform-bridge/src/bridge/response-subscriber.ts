@@ -26,9 +26,8 @@ class ResponseSubscriber {
     threadId: string | undefined,
     messagingMode: MessagingMode = "passive"
   ): void {
-    if (this.subscriptions.has(sessionId)) {
-      // biome-ignore lint/style/noNonNullAssertion: has() check guarantees existence
-      const existing = this.subscriptions.get(sessionId)!;
+    const existing = this.subscriptions.get(sessionId);
+    if (existing) {
       if (existing.platform === platform && existing.chatId === chatId) {
         return;
       }
