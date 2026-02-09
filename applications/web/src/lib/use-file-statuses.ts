@@ -46,7 +46,10 @@ async function fetchFileStatuses(sessionId: string): Promise<ChangedFile[]> {
 }
 
 function getFileStatusesKey(sessionId: string | null): string | null {
-  return sessionId ? `file-statuses-${sessionId}` : null;
+  if (!sessionId || sessionId === "new") {
+    return null;
+  }
+  return `file-statuses-${sessionId}`;
 }
 
 export function useFileStatuses(sessionId: string | null) {

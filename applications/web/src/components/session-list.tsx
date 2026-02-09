@@ -37,12 +37,10 @@ function SessionListProject({
 
   const sessionCount = sessions?.length ?? 0;
 
-  const handleAddSession = async (event: React.MouseEvent) => {
+  const handleAddSession = (event: React.MouseEvent) => {
     event.stopPropagation();
-    const session = await createSession(project.id);
-    if (session) {
-      router.push(`/editor/${session.id}/chat`);
-    }
+    const session = createSession(project.id);
+    router.push(`/editor/${session.id}/chat`);
   };
 
   return (

@@ -98,12 +98,22 @@ export function useSessions(projectId: string | null) {
 }
 
 export function useSession(sessionId: string | null) {
-  return useSWR(sessionId ? `session-${sessionId}` : null, () => {
-    if (!sessionId) {
-      return null;
+  const isOptimistic = sessionId === OPTIMISTIC_SESSION_ID;
+
+  return useSWR(
+    sessionId ? `session-${sessionId}` : null,
+    () => {
+      if (!sessionId) {
+        return null;
+      }
+      return api.sessions.get(sessionId);
+    },
+    {
+      revalidateOnMount: !isOptimistic,
+      revalidateOnFocus: !isOptimistic,
+      revalidateOnReconnect: !isOptimistic,
     }
-    return api.sessions.get(sessionId);
-  });
+  );
 }
 
 interface CreateSessionOptions {
@@ -111,19 +121,17 @@ interface CreateSessionOptions {
   initialMessage?: string;
 }
 
+const OPTIMISTIC_SESSION_ID = "new";
+
 export function useCreateSession() {
   const { mutate } = useSWRConfig();
 
-  return async (
-    projectId: string,
-    options: CreateSessionOptions = {}
-  ): Promise<Session | null> => {
+  return (projectId: string, options: CreateSessionOptions = {}): Session => {
     const { title, initialMessage } = options;
-    const optimisticId = `optimistic-${Date.now()}`;
     const now = new Date().toISOString();
 
     const optimisticSession: Session = {
-      id: optimisticId,
+      id: OPTIMISTIC_SESSION_ID,
       projectId,
       title: title ?? null,
       opencodeSessionId: null,
@@ -134,68 +142,51 @@ export function useCreateSession() {
 
     const sessionsKey = `sessions-${projectId}`;
 
+    mutate(`session-${OPTIMISTIC_SESSION_ID}`, optimisticSession, {
+      revalidate: false,
+    });
+
     mutate(
       sessionsKey,
-      (current: Session[] = []) => [...current, optimisticSession],
-      false
+      async (current: Session[] = []) => {
+        const session = await api.sessions.create(projectId, {
+          title,
+          initialMessage,
+        });
+
+        mutate(`session-${session.id}`, session, { revalidate: false });
+        mutate(`session-${OPTIMISTIC_SESSION_ID}`, session, {
+          revalidate: false,
+        });
+
+        return current.map((existing) =>
+          existing.id === OPTIMISTIC_SESSION_ID ? session : existing
+        );
+      },
+      {
+        optimisticData: (current = []) => [...current, optimisticSession],
+        rollbackOnError: true,
+        revalidate: true,
+      }
     );
 
-    try {
-      const session = await api.sessions.create(projectId, {
-        title,
-        initialMessage,
-      });
-
-      mutate(
-        sessionsKey,
-        (current: Session[] = []) => {
-          const withoutOptimistic = current.filter(
-            (existing) => existing.id !== optimisticId
-          );
-          const alreadyExists = withoutOptimistic.some(
-            (existing) => existing.id === session.id
-          );
-          if (alreadyExists) {
-            return withoutOptimistic;
-          }
-          return [...withoutOptimistic, session];
-        },
-        false
-      );
-
-      mutate(`session-${session.id}`, session, false);
-
-      return session;
-    } catch {
-      mutate(
-        sessionsKey,
-        (current: Session[] = []) =>
-          current.filter((existing) => existing.id !== optimisticId),
-        false
-      );
-      return null;
-    }
+    return optimisticSession;
   };
 }
 
 export function useDeleteSession() {
   const { mutate } = useSWRConfig();
 
-  return async (session: Session, onDeleted: () => void) => {
+  return (session: Session, onDeleted: () => void) => {
     const cacheKey = `sessions-${session.projectId}`;
 
-    mutate(
-      cacheKey,
-      (current: Session[] = []) =>
+    mutate(cacheKey, () => api.sessions.delete(session.id).then(() => null), {
+      optimisticData: (current: Session[] = []) =>
         current.filter((existing) => existing.id !== session.id),
-      false
-    );
-    onDeleted();
+      rollbackOnError: true,
+      revalidate: true,
+    });
 
-    try {
-      await api.sessions.delete(session.id);
-    } catch {
-      mutate(cacheKey);
-    }
+    onDeleted();
   };
 }

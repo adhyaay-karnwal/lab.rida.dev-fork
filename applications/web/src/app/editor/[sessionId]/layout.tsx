@@ -36,7 +36,7 @@ function useSessionData(sessionId: string) {
 
 function useSessionContainers(sessionId: string) {
   const { data: initialContainers } = useSWR(
-    `sessionContainers-${sessionId}`,
+    sessionId !== "new" ? `sessionContainers-${sessionId}` : null,
     () =>
       fetchChannelSnapshot<SessionContainer[]>("sessionContainers", sessionId)
   );
@@ -58,7 +58,7 @@ export default function SessionLayout({
 }: SessionLayoutProps) {
   const router = useRouter();
   const { sessionId } = use(params);
-  const { error: sessionError } = useSession(sessionId);
+  const { data: resolvedSession, error: sessionError } = useSession(sessionId);
   const { data: sessionData } = useSessionData(sessionId);
   const containers = useSessionContainers(sessionId);
 
@@ -75,12 +75,25 @@ export default function SessionLayout({
   };
 
   useEffect(() => {
-    if (sessionError) {
+    if (
+      sessionId === "new" &&
+      resolvedSession &&
+      resolvedSession.id !== "new"
+    ) {
+      const currentPath = window.location.pathname;
+      router.replace(
+        currentPath.replace("/editor/new", `/editor/${resolvedSession.id}`)
+      );
+    }
+  }, [sessionId, resolvedSession, router]);
+
+  useEffect(() => {
+    if (sessionError && sessionId !== "new") {
       router.replace("/editor");
     }
-  }, [sessionError, router]);
+  }, [sessionError, sessionId, router]);
 
-  if (sessionError) {
+  if (sessionError && sessionId !== "new") {
     return null;
   }
 

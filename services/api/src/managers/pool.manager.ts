@@ -109,7 +109,6 @@ export class PoolManager {
             createSessionContainer({
               sessionId: session.id,
               containerId: containerDefinition.id,
-              runtimeId: "",
               status: CONTAINER_STATUS.STARTING,
             })
           )

@@ -65,8 +65,8 @@ export class SessionCleanupService {
 
         const containers = await findSessionContainersBySessionId(sessionId);
         const runtimeIds = containers
-          .filter((c) => c.runtimeId)
-          .map((c) => c.runtimeId);
+          .map(({ runtimeId }) => runtimeId)
+          .filter((id): id is string => id !== null);
 
         await this.stopAndRemoveContainers(runtimeIds, sandbox.provider);
         await browserService.forceStopBrowser(sessionId);

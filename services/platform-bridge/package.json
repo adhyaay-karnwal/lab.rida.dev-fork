@@ -13,7 +13,7 @@
     "@lab/entry-point": "workspace:*",
     "@lab/multiplayer-sdk": "workspace:*",
     "@lab/widelogger": "workspace:*",
-    "@photon-ai/imessage-kit": "^1.0.0",
+    "@photon-ai/imessage-kit": "^2.1.2",
     "arktype": "^2.1.29",
     "drizzle-orm": "^0.45.1"
   },

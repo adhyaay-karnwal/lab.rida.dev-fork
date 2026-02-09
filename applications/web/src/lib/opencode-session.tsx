@@ -40,7 +40,7 @@ export function OpenCodeSessionProvider({
   const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    if (!sessionId) {
+    if (!sessionId || sessionId === "new") {
       if (abortControllerRef.current) {
         abortControllerRef.current.abort();
         abortControllerRef.current = null;

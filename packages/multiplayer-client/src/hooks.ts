@@ -36,11 +36,10 @@ function parseEvent<C extends ChannelConfig>(
   return channel.event.parse(data);
 }
 
-type ChannelParams<S extends Schema, K extends ChannelName<S>> = HasParams<
-  PathOf<S["channels"][K]>
-> extends true
-  ? { uuid: string }
-  : undefined;
+type ChannelParams<S extends Schema, K extends ChannelName<S>> =
+  HasParams<PathOf<S["channels"][K]>> extends true
+    ? { uuid: string }
+    : undefined;
 
 interface ChannelOptions {
   enabled?: boolean;

@@ -178,7 +178,7 @@ export function useFileBrowser(sessionId: string | null): {
   const client = useSessionClient(sessionId);
 
   const { data: rootNodes, isLoading: rootLoading } = useSWR<FileNode[]>(
-    sessionId ? `file-browser-root-${sessionId}` : null,
+    sessionId && sessionId !== "new" ? `file-browser-root-${sessionId}` : null,
     () => {
       if (!sessionId) {
         return [];

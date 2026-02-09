@@ -5,7 +5,7 @@ import {
   type SessionContainer,
   sessionContainers,
 } from "@lab/database/schema/session-containers";
-import { and, asc, eq, inArray } from "drizzle-orm";
+import { and, asc, eq, inArray, isNotNull } from "drizzle-orm";
 import { groupBy } from "../shared/collection-utils";
 import { InternalError } from "../shared/errors";
 import { formatNetworkAlias } from "../shared/naming";
@@ -13,7 +13,7 @@ import { CONTAINER_STATUS, type ContainerStatus } from "../types/container";
 
 interface SessionService {
   containerId: string;
-  runtimeId: string;
+  runtimeId: string | null;
   image: string;
   status: string;
   ports: number[];
@@ -22,7 +22,7 @@ interface SessionService {
 export async function createSessionContainer(data: {
   sessionId: string;
   containerId: string;
-  runtimeId: string;
+  runtimeId?: string | null;
   status: string;
 }): Promise<SessionContainer> {
   const [sessionContainer] = await db
@@ -64,14 +64,25 @@ export async function findAllRunningSessionContainers(): Promise<
     })
     .from(sessionContainers)
     .innerJoin(containers, eq(sessionContainers.containerId, containers.id))
-    .where(eq(sessionContainers.status, CONTAINER_STATUS.RUNNING));
+    .where(
+      and(
+        eq(sessionContainers.status, CONTAINER_STATUS.RUNNING),
+        isNotNull(sessionContainers.runtimeId)
+      )
+    );
 
-  return rows.map((row) => ({
-    id: row.id,
-    sessionId: row.sessionId,
-    runtimeId: row.runtimeId,
-    hostname: row.hostname ?? row.id,
-  }));
+  return rows.map((row) => {
+    if (!row.runtimeId) {
+      throw new Error("row.runtimeId was unexpectedly empty");
+    }
+
+    return {
+      id: row.id,
+      sessionId: row.sessionId,
+      runtimeId: row.runtimeId,
+      hostname: row.hostname ?? row.id,
+    };
+  });
 }
 
 export function findAllActiveSessionContainers(): Promise<
@@ -91,11 +102,16 @@ export function findAllActiveSessionContainers(): Promise<
     })
     .from(sessionContainers)
     .where(
-      inArray(sessionContainers.status, [
-        CONTAINER_STATUS.RUNNING,
-        CONTAINER_STATUS.STARTING,
-      ])
-    );
+      and(
+        inArray(sessionContainers.status, [
+          CONTAINER_STATUS.RUNNING,
+          CONTAINER_STATUS.STARTING,
+        ]),
+        isNotNull(sessionContainers.runtimeId)
+      )
+    ) as Promise<
+    { id: string; sessionId: string; runtimeId: string; status: string }[]
+  >;
 }
 
 export async function findSessionContainerByRuntimeId(
@@ -309,7 +325,7 @@ export async function getWorkspaceContainerId(
 export async function getWorkspaceContainerRuntimeId(
   sessionId: string
 ): Promise<{
-  runtimeId: string;
+  runtimeId: string | null;
   containerId: string;
 } | null> {
   const result = await db

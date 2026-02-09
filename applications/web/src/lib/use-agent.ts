@@ -324,17 +324,19 @@ export function useAgent(labSessionId: string): UseAgentResult {
   const sessionDataRef = useRef<SessionData | null>(null);
   const opencodeClient = useSessionClient(labSessionId);
 
+  const isOptimistic = labSessionId === "new";
+
   const {
     data: sessionData,
     error: swrError,
     isLoading,
   } = useSWR<SessionData | null>(
-    labSessionId ? getAgentMessagesKey(labSessionId) : null,
+    labSessionId && !isOptimistic ? getAgentMessagesKey(labSessionId) : null,
     () => fetchSessionData(labSessionId)
   );
 
   const { data: pendingQuestions } = useSWR(
-    labSessionId ? `pending-questions-${labSessionId}` : null,
+    labSessionId && !isOptimistic ? `pending-questions-${labSessionId}` : null,
     () => fetchPendingQuestions(labSessionId)
   );
 

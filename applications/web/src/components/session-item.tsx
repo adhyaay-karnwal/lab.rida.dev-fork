@@ -69,8 +69,15 @@ function SessionItemStatus() {
 }
 
 function SessionItemHash() {
-  const { sessionId } = useSessionItemContext();
-  return <Hash>{sessionId.slice(0, 6)}</Hash>;
+  const { session } = useSessionItemContext();
+
+  if (session.status === "creating") {
+    return (
+      <span className="inline-block h-3 w-8 animate-pulse rounded bg-bg-hover" />
+    );
+  }
+
+  return <Hash>{session.id.slice(0, 6)}</Hash>;
 }
 
 function SessionItemTitle() {

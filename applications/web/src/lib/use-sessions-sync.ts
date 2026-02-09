@@ -57,14 +57,38 @@ export function useSessionsSync() {
           if (!current) {
             return newSessions;
           }
+
           const existingIds = new Set(current.map((session) => session.id));
           const toAdd = newSessions.filter(
             (session) => !existingIds.has(session.id)
           );
+
           if (toAdd.length === 0) {
             return current;
           }
-          return [...current, ...toAdd];
+
+          const optimisticIds = current
+            .filter((session) => session.status === "creating")
+            .map((session) => session.id);
+
+          const replacements = new Map<string, Session>();
+          const appended: Session[] = [];
+
+          for (const session of toAdd) {
+            const match = optimisticIds.shift();
+            if (match) {
+              replacements.set(match, session);
+            } else {
+              appended.push(session);
+            }
+          }
+
+          return [
+            ...current.map(
+              (existing) => replacements.get(existing.id) ?? existing
+            ),
+            ...appended,
+          ];
         },
         false
       );

@@ -7,8 +7,12 @@ export const orchestrationRequests = pgTable("orchestration_requests", {
   channelId: text("channel_id"),
   content: text("content").notNull(),
   status: text("status").notNull().default("pending"),
-  resolvedProjectId: uuid("resolved_project_id").references(() => projects.id),
-  resolvedSessionId: uuid("resolved_session_id").references(() => sessions.id),
+  resolvedProjectId: uuid("resolved_project_id").references(() => projects.id, {
+    onDelete: "set null",
+  }),
+  resolvedSessionId: uuid("resolved_session_id").references(() => sessions.id, {
+    onDelete: "set null",
+  }),
   resolutionConfidence: text("resolution_confidence"),
   resolutionReasoning: text("resolution_reasoning"),
   errorMessage: text("error_message"),

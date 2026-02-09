@@ -4,8 +4,25 @@ import type { Project } from "@lab/client";
 import { useRouter } from "next/navigation";
 import { ProjectNavigator } from "@/components/project-navigator-list";
 import { SessionItem } from "@/components/session-item";
-import { useCreateSession, useProjects, useSessions } from "@/lib/hooks";
+import {
+  useCreateSession,
+  useProjects,
+  useSession,
+  useSessions,
+} from "@/lib/hooks";
 import { useSessionsSync } from "@/lib/use-sessions-sync";
+
+function useResolvedSelectedId(
+  selectedSessionId: string | null
+): string | null {
+  const { data: resolvedSession } = useSession(
+    selectedSessionId === "new" ? "new" : null
+  );
+  if (selectedSessionId === "new" && resolvedSession?.id !== "new") {
+    return resolvedSession?.id ?? "new";
+  }
+  return selectedSessionId;
+}
 
 function SidebarSessionItem({ isSelected }: { isSelected: boolean }) {
   const { prefetch } = SessionItem.useContext();
@@ -38,14 +55,13 @@ function ProjectSessionsList({
   const router = useRouter();
   const { data: sessions } = useSessions(project.id);
   const createSession = useCreateSession();
+  const resolvedId = useResolvedSelectedId(selectedSessionId);
 
   const sessionCount = sessions?.length ?? 0;
 
-  const handleAddSession = async () => {
-    const session = await createSession(project.id);
-    if (session) {
-      router.push(`/editor/${session.id}/chat`);
-    }
+  const handleAddSession = () => {
+    const session = createSession(project.id);
+    router.push(`/editor/${session.id}/chat`);
   };
 
   return (
@@ -60,7 +76,7 @@ function ProjectSessionsList({
       </ProjectNavigator.Header>
       {sessions?.map((session) => (
         <SessionItem.Provider key={session.id} session={session}>
-          <SidebarSessionItem isSelected={selectedSessionId === session.id} />
+          <SidebarSessionItem isSelected={resolvedId === session.id} />
         </SessionItem.Provider>
       ))}
     </ProjectNavigator.List>
