@@ -1,5 +1,85 @@
 import { agentProcesses, getOrCreateProcess } from "../agent-process";
 
+const LAB_TOOL_ALLOWLIST = [
+  "mcp__lab__bash",
+  "mcp__lab__browser",
+  "mcp__lab__containers",
+  "mcp__lab__logs",
+  "mcp__lab__restart_process",
+  "mcp__lab__internal_url",
+  "mcp__lab__public_url",
+  "mcp__lab__Read",
+  "mcp__lab__Write",
+  "mcp__lab__Patch",
+  "mcp__lab__Edit",
+  "mcp__lab__Grep",
+  "mcp__lab__Glob",
+  "mcp__lab__gh",
+  "mcp__lab__WebFetch",
+  "bash",
+  "browser",
+  "containers",
+  "logs",
+  "restart_process",
+  "internal_url",
+  "public_url",
+  "Read",
+  "Write",
+  "Patch",
+  "Edit",
+  "Grep",
+  "Glob",
+  "gh",
+  "WebFetch",
+] as const;
+
+const CLAUDE_TOOL_DENYLIST = [
+  "AskUserQuestion",
+  "EnterPlanMode",
+  "ExitPlanMode",
+  "Task",
+  "TaskOutput",
+  "TaskStop",
+  "TodoWrite",
+  "WebSearch",
+  "WebFetch",
+  "SlashCommand",
+  "Skill",
+  "NotebookEdit",
+] as const;
+
+function toRecord(value: unknown): Record<string, unknown> | null {
+  if (typeof value !== "object" || value === null) {
+    return null;
+  }
+  return Object.fromEntries(Object.entries(value));
+}
+
+function applySessionNewPolicy(body: Record<string, unknown>): void {
+  if (body.method !== "session/new") {
+    return;
+  }
+
+  const params = toRecord(body.params);
+  if (!params) {
+    return;
+  }
+
+  const meta = toRecord(params._meta) ?? {};
+  const claudeCode = toRecord(meta.claudeCode) ?? {};
+  const options = toRecord(claudeCode.options) ?? {};
+
+  options.allowedTools = [...LAB_TOOL_ALLOWLIST];
+  options.disallowedTools = [...CLAUDE_TOOL_DENYLIST];
+  options.settingSources = ["project"];
+
+  claudeCode.options = options;
+  meta.claudeCode = claudeCode;
+  meta.disableBuiltInTools = true;
+  params._meta = meta;
+  body.params = params;
+}
+
 export async function handleAcpPost(
   request: Request,
   serverId: string
@@ -25,6 +105,8 @@ export async function handleAcpPost(
     body.method ?? (body.result ? "response" : "notification"),
     body.id !== undefined ? `id=${body.id}` : ""
   );
+
+  applySessionNewPolicy(body);
 
   if (!agent.isRunning) {
     agent.spawnProcess();

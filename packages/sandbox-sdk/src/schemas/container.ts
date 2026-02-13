@@ -24,6 +24,7 @@ export const ContainerCreateOptionsSchema = z.object({
   ports: z.array(PortMappingSchema).optional(),
   volumes: z.array(VolumeBindingSchema).optional(),
   networkMode: z.string().optional(),
+  networkAliases: z.array(z.string()).optional(),
   privileged: z.boolean().optional(),
 });
 

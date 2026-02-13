@@ -103,6 +103,10 @@ export class DockerContainerManager implements ContainerManager {
     );
     const volumeBinds = this.buildVolumeBinds(options.volumes);
     const restartPolicy = this.buildRestartPolicy(options.restartPolicy);
+    const endpointConfig = this.buildEndpointConfig(
+      options.networkMode,
+      options.networkAliases
+    );
 
     const container = await this.docker.createContainer({
       name: options.name,
@@ -122,6 +126,7 @@ export class DockerContainerManager implements ContainerManager {
         Privileged: options.privileged,
         RestartPolicy: restartPolicy,
       },
+      NetworkingConfig: endpointConfig,
     });
 
     return container.id;
@@ -161,6 +166,32 @@ export class DockerContainerManager implements ContainerManager {
       const mode = volume.readonly ? "ro" : "rw";
       return `${volume.source}:${volume.target}:${mode}`;
     });
+  }
+
+  private buildEndpointConfig(
+    networkMode: string | undefined,
+    networkAliases: string[] | undefined
+  ):
+    | {
+        EndpointsConfig: Record<string, { Aliases?: string[] }>;
+      }
+    | undefined {
+    if (!networkMode) {
+      return undefined;
+    }
+
+    const aliases =
+      Array.isArray(networkAliases) && networkAliases.length > 0
+        ? networkAliases
+        : undefined;
+
+    return {
+      EndpointsConfig: {
+        [networkMode]: {
+          Aliases: aliases,
+        },
+      },
+    };
   }
 
   private buildRestartPolicy(

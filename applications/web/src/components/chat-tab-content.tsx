@@ -48,7 +48,7 @@ export function ChatTabContent({
   const { session } = useSessionContext();
   const status = useSessionStatus(session);
   const [rateLimitMessage, setRateLimitMessage] = useState<string | null>(null);
-  const { getModelId, setModelId: setChatModelId, scrollToBottom } = useChat();
+  const { getModelId, setModelId: setChatModelId } = useChat();
   const { models, modelId, setModelId } = useModelSelection({
     syncTo: setChatModelId,
     currentSyncedValue: getModelId(),
@@ -75,10 +75,6 @@ export function ChatTabContent({
       isStreamingRef.current = false;
     }
   }, [isStreaming]);
-
-  useEffect(() => {
-    scrollToBottom();
-  }, [scrollToBottom]);
 
   useEffect(() => {
     if (sessionStatus.type === "retry") {

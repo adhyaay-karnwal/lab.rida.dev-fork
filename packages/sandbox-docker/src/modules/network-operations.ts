@@ -69,6 +69,30 @@ function isActiveEndpointsError(error: unknown): boolean {
   );
 }
 
+function isEndpointAlreadyExistsError(error: unknown): boolean {
+  if (!hasStatusCode(error) || error.statusCode !== 403) {
+    return false;
+  }
+
+  if (typeof error !== "object" || error === null || !("json" in error)) {
+    return false;
+  }
+
+  const payload = error.json;
+  if (
+    typeof payload !== "object" ||
+    payload === null ||
+    !("message" in payload)
+  ) {
+    return false;
+  }
+
+  return (
+    typeof payload.message === "string" &&
+    payload.message.includes("already exists in network")
+  );
+}
+
 export class NetworkOperations {
   private readonly docker: Dockerode;
 
@@ -153,10 +177,17 @@ export class NetworkOperations {
       ? { Aliases: options.aliases }
       : undefined;
 
-    await this.docker.getNetwork(networkName).connect({
-      Container: containerId,
-      EndpointConfig: endpointConfig,
-    });
+    try {
+      await this.docker.getNetwork(networkName).connect({
+        Container: containerId,
+        EndpointConfig: endpointConfig,
+      });
+    } catch (error) {
+      if (isEndpointAlreadyExistsError(error)) {
+        return;
+      }
+      throw error;
+    }
   }
 
   async disconnectFromNetwork(

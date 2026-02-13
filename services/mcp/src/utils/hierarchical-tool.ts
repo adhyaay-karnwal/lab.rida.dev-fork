@@ -255,7 +255,7 @@ function resolveBoundSession(
   args: {
     sessionId?: string;
   },
-  extra: unknown,
+  extra: ToolExtra,
   resolveSessionId: HierarchicalToolConfig["resolveSessionId"] | undefined
 ): { sessionId: string } | { error: string } {
   if (resolveSessionId) {

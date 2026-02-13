@@ -21,6 +21,7 @@ export interface ContainerCreateOptions {
   ports?: PortMapping[];
   volumes?: VolumeBinding[];
   networkMode?: string;
+  networkAliases?: string[];
   privileged?: boolean;
   restartPolicy?: RestartPolicy;
   platform?: string;

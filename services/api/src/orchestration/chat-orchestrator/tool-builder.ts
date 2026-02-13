@@ -49,6 +49,7 @@ export async function buildOrchestratorTools(
     acp: toolsConfig.acp,
     publisher: toolsConfig.publisher,
     sessionStateStore: toolsConfig.sessionStateStore,
+    sessionLifecycle: toolsConfig.sessionLifecycle,
   });
 
   const getSessionStatusTool = createGetSessionStatusTool(

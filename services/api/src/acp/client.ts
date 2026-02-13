@@ -16,7 +16,56 @@ interface CreateSessionOptions {
   mcpServers?: NewSessionRequest["mcpServers"];
   model?: string;
   systemPrompt?: string;
+  loadSessionId?: string;
 }
+
+const LAB_TOOL_ALLOWLIST = [
+  "mcp__lab__bash",
+  "mcp__lab__browser",
+  "mcp__lab__containers",
+  "mcp__lab__logs",
+  "mcp__lab__restart_process",
+  "mcp__lab__internal_url",
+  "mcp__lab__public_url",
+  "mcp__lab__Read",
+  "mcp__lab__Write",
+  "mcp__lab__Patch",
+  "mcp__lab__Edit",
+  "mcp__lab__Grep",
+  "mcp__lab__Glob",
+  "mcp__lab__gh",
+  "mcp__lab__WebFetch",
+  "bash",
+  "browser",
+  "containers",
+  "logs",
+  "restart_process",
+  "internal_url",
+  "public_url",
+  "Read",
+  "Write",
+  "Patch",
+  "Edit",
+  "Grep",
+  "Glob",
+  "gh",
+  "WebFetch",
+] as const;
+
+const CLAUDE_TOOL_DENYLIST = [
+  "AskUserQuestion",
+  "EnterPlanMode",
+  "ExitPlanMode",
+  "Task",
+  "TaskOutput",
+  "TaskStop",
+  "TodoWrite",
+  "WebSearch",
+  "WebFetch",
+  "SlashCommand",
+  "Skill",
+  "NotebookEdit",
+] as const;
 
 function buildSessionInit(options: CreateSessionOptions): NewSessionRequest {
   const init: NewSessionRequest = {
@@ -24,16 +73,24 @@ function buildSessionInit(options: CreateSessionOptions): NewSessionRequest {
     mcpServers: options.mcpServers ?? [],
   };
 
-  const meta: Record<string, unknown> = {};
+  const claudeCodeOptions: Record<string, unknown> = {
+    allowedTools: [...LAB_TOOL_ALLOWLIST],
+    disallowedTools: [...CLAUDE_TOOL_DENYLIST],
+    settingSources: ["project"],
+  };
+
   if (options.model) {
-    meta.model = options.model;
+    claudeCodeOptions.model = options.model;
   }
-  if (options.systemPrompt) {
-    meta.appendSystemPrompt = options.systemPrompt;
-  }
+
   init._meta = {
     disableBuiltInTools: true,
-    ...(Object.keys(meta).length > 0 ? { "sandboxagent.dev": meta } : {}),
+    claudeCode: {
+      options: claudeCodeOptions,
+    },
+    ...(options.systemPrompt
+      ? { systemPrompt: { append: options.systemPrompt } }
+      : {}),
   };
 
   return init;
@@ -58,19 +115,24 @@ export class AgentSessionManager {
   private readonly listeners = new Map<string, Set<EventListener>>();
   private readonly eventBuffers = new Map<string, AnyMessage[]>();
   private readonly sessionIds = new Map<string, string>();
+  private readonly inFlightPrompts = new Map<string, Promise<void>>();
 
   constructor(baseUrl: string) {
     this.baseUrl = baseUrl;
+  }
+
+  hasSession(serverId: string): boolean {
+    return this.clients.has(serverId) && this.sessionIds.has(serverId);
   }
 
   async createSession(
     serverId: string,
     options: CreateSessionOptions
   ): Promise<string> {
-    const listeners = new Set<EventListener>();
+    const listeners = this.listeners.get(serverId) ?? new Set<EventListener>();
     this.listeners.set(serverId, listeners);
 
-    const buffer: AnyMessage[] = [];
+    const buffer = this.eventBuffers.get(serverId) ?? [];
     this.eventBuffers.set(serverId, buffer);
 
     const emit = (envelope: AnyMessage) => {
@@ -107,16 +169,34 @@ export class AgentSessionManager {
     const client = new AcpHttpClient(clientOptions);
     this.clients.set(serverId, client);
 
-    await client.initialize();
+    const initResult = await client.initialize();
 
     const sessionInit = buildSessionInit(options);
-    const result = await client.newSession(sessionInit);
-    this.sessionIds.set(serverId, result.sessionId);
+    const canLoadSession = Boolean(initResult.agentCapabilities?.loadSession);
+    const requestedLoadSessionId = options.loadSessionId;
 
-    return result.sessionId;
+    if (canLoadSession && requestedLoadSessionId) {
+      try {
+        await client.loadSession({
+          sessionId: requestedLoadSessionId,
+          cwd: sessionInit.cwd,
+          mcpServers: sessionInit.mcpServers,
+          _meta: sessionInit._meta,
+        });
+        this.sessionIds.set(serverId, requestedLoadSessionId);
+        return requestedLoadSessionId;
+      } catch {
+        // Fall through to creating a new session
+      }
+    }
+
+    const newSessionResult = await client.newSession(sessionInit);
+    this.sessionIds.set(serverId, newSessionResult.sessionId);
+
+    return newSessionResult.sessionId;
   }
 
-  async sendMessage(serverId: string, text: string): Promise<void> {
+  sendMessage(serverId: string, text: string): Promise<void> {
     const client = this.clients.get(serverId);
     if (!client) {
       throw new Error(`No session for server: ${serverId}`);
@@ -141,38 +221,40 @@ export class AgentSessionManager {
       },
     };
 
-    const listeners = this.listeners.get(serverId);
-    if (listeners && listeners.size > 0) {
-      for (const listener of listeners) {
-        listener(userEnvelope);
-      }
-    } else {
-      const buffer = this.eventBuffers.get(serverId);
-      if (buffer) {
-        buffer.push(userEnvelope);
-      }
-    }
+    this.emitSessionEvent(serverId, userEnvelope);
 
-    await client.prompt({
-      sessionId,
-      prompt: [{ type: "text", text }],
-    });
+    const pendingPrompt = client
+      .prompt({
+        sessionId,
+        prompt: [{ type: "text", text }],
+      })
+      .then(() => {
+        this.emitSessionEvent(serverId, {
+          jsonrpc: "2.0",
+          id: null,
+          result: { stopReason: "end_turn" },
+        });
+      })
+      .catch((error) => {
+        const message =
+          error instanceof Error ? error.message : "Prompt failed";
+        this.emitSessionEvent(serverId, {
+          jsonrpc: "2.0",
+          id: null,
+          error: { code: -32_603, message },
+        });
+        this.emitSessionEvent(serverId, {
+          jsonrpc: "2.0",
+          id: null,
+          result: { stopReason: "end_turn" },
+        });
+      })
+      .finally(() => {
+        this.inFlightPrompts.delete(serverId);
+      });
 
-    // Emit synthetic result with stopReason so the frontend's
-    // translateAcpEvent calls finishTurn() — this resets activeItemId
-    // and emits turn.ended, preventing the next reply from appending
-    // to the previous assistant message.
-    const finishEnvelope: AnyMessage = {
-      jsonrpc: "2.0",
-      id: null,
-      result: { stopReason: "end_turn" },
-    };
-    const currentListeners = this.listeners.get(serverId);
-    if (currentListeners) {
-      for (const listener of currentListeners) {
-        listener(finishEnvelope);
-      }
-    }
+    this.inFlightPrompts.set(serverId, pendingPrompt);
+    return Promise.resolve();
   }
 
   async cancelPrompt(serverId: string): Promise<void> {
@@ -203,6 +285,7 @@ export class AgentSessionManager {
 
   async destroySession(serverId: string): Promise<void> {
     const client = this.clients.get(serverId);
+    this.inFlightPrompts.delete(serverId);
     if (client) {
       await client.disconnect();
       this.clients.delete(serverId);
@@ -231,11 +314,21 @@ export class AgentSessionManager {
   }
 
   emitEvent(serverId: string, envelope: AnyMessage): void {
+    this.emitSessionEvent(serverId, envelope);
+  }
+
+  private emitSessionEvent(serverId: string, envelope: AnyMessage): void {
     const listeners = this.listeners.get(serverId);
-    if (listeners) {
+    if (listeners && listeners.size > 0) {
       for (const listener of listeners) {
         listener(envelope);
       }
+      return;
+    }
+
+    const buffer = this.eventBuffers.get(serverId);
+    if (buffer) {
+      buffer.push(envelope);
     }
   }
 

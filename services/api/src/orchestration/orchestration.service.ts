@@ -220,11 +220,11 @@ export async function orchestrate(
     if (existingSession?.sandboxSessionId) {
       await sendMessageToSession({
         sessionId: input.channelId,
-        sandboxSessionId: existingSession.sandboxSessionId,
         content: input.content,
         acp,
         publisher,
         sessionStateStore,
+        sessionLifecycle: input.sessionLifecycle,
       });
 
       return {

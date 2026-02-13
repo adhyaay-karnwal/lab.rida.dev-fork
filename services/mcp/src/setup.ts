@@ -8,6 +8,7 @@ import { container } from "./tools/container";
 import { filesystem } from "./tools/filesystem";
 import { github } from "./tools/github";
 import { makeRegisterTool } from "./tools/register";
+import { webFetch } from "./tools/web-fetch";
 import { initializeBucket } from "./utils/rustfs";
 
 interface SetupOptions {
@@ -34,6 +35,7 @@ export const setup = (async ({ env }) => {
     registerTool(browser);
     registerTool(container);
     registerTool(github);
+    registerTool(webFetch);
 
     return server;
   };

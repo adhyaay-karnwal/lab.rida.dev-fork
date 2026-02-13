@@ -48,6 +48,45 @@ interface InitializedSession {
   sandboxSessionId: string;
 }
 
+const SEND_MESSAGE_TIMEOUT_MS = 45_000;
+
+function isRecoverableAcpSendError(error: unknown): boolean {
+  if (!(error instanceof Error)) {
+    return false;
+  }
+
+  const message = error.message;
+  return (
+    message.includes("Request failed with status 500") ||
+    message.includes("Agent process exited") ||
+    message.includes("No session for server") ||
+    message.includes("Process stdin not available") ||
+    message.includes("timed out")
+  );
+}
+
+async function withTimeout<T>(
+  operation: Promise<T>,
+  timeoutMs: number,
+  label: string
+): Promise<T> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      operation,
+      new Promise<T>((_, reject) => {
+        timer = setTimeout(() => {
+          reject(new Error(`${label} timed out after ${timeoutMs}ms`));
+        }, timeoutMs);
+      }),
+    ]);
+  } finally {
+    if (timer) {
+      clearTimeout(timer);
+    }
+  }
+}
+
 async function safeJsonBody(
   request: Request
 ): Promise<Record<string, unknown>> {
@@ -136,6 +175,86 @@ export function createAcpProxyHandler(deps: AcpProxyDeps): AcpProxyHandler {
       ok: true,
       value: { session, sandboxSessionId: session.sandboxSessionId },
     };
+  }
+
+  async function ensureAcpSession(
+    labSessionId: string,
+    session: Session
+  ): Promise<string> {
+    if (acp.hasSession(labSessionId) && session.sandboxSessionId) {
+      return session.sandboxSessionId;
+    }
+
+    const workspaceDir =
+      session.workspaceDirectory ??
+      (await resolveWorkspacePathBySession(labSessionId));
+    const systemPrompt = await buildSystemPrompt(
+      labSessionId,
+      session.projectId ?? ""
+    );
+    const mcpServers = buildMcpServers(mcpUrl, labSessionId);
+
+    const sandboxSessionId = await acp.createSession(labSessionId, {
+      cwd: workspaceDir,
+      mcpServers,
+      model: undefined,
+      systemPrompt: systemPrompt ?? undefined,
+      loadSessionId: session.sandboxSessionId ?? undefined,
+    });
+
+    if (session.sandboxSessionId !== sandboxSessionId) {
+      await updateSessionFields(labSessionId, {
+        sandboxSessionId,
+        workspaceDirectory: workspaceDir,
+      });
+    }
+
+    return sandboxSessionId;
+  }
+
+  async function resetAcpSessionForRetry(
+    labSessionId: string,
+    session: Session
+  ): Promise<Session> {
+    await acp.destroySession(labSessionId);
+    await updateSessionFields(labSessionId, {
+      sandboxSessionId: null,
+    });
+    return { ...session, sandboxSessionId: null };
+  }
+
+  async function sendMessageWithRecovery(
+    labSessionId: string,
+    session: Session,
+    messageText: string
+  ): Promise<void> {
+    let currentSession = session;
+
+    for (let attemptIndex = 0; attemptIndex < 2; attemptIndex++) {
+      try {
+        await withTimeout(
+          ensureAcpSession(labSessionId, currentSession),
+          SEND_MESSAGE_TIMEOUT_MS,
+          "ACP session initialization"
+        );
+        await withTimeout(
+          acp.sendMessage(labSessionId, messageText),
+          SEND_MESSAGE_TIMEOUT_MS,
+          "ACP send message"
+        );
+        return;
+      } catch (error) {
+        const isFinalAttempt = attemptIndex === 1;
+        if (isFinalAttempt || !isRecoverableAcpSendError(error)) {
+          throw error;
+        }
+
+        currentSession = await resetAcpSessionForRetry(
+          labSessionId,
+          currentSession
+        );
+      }
+    }
   }
 
   type RouteHandler = (
@@ -302,11 +421,10 @@ export function createAcpProxyHandler(deps: AcpProxyDeps): AcpProxyHandler {
       return validated.response;
     }
 
-    const sessionResult = await requireInitializedSession(validated.value);
-    if (!sessionResult.ok) {
-      return sessionResult.response;
+    const initialSession = await findSessionById(validated.value);
+    if (!initialSession) {
+      return corsResponse(JSON.stringify({ error: "Session not found" }), 404);
     }
-
     const body = await safeJsonBody(request);
     const messageText = typeof body.message === "string" ? body.message : "";
 
@@ -315,7 +433,11 @@ export function createAcpProxyHandler(deps: AcpProxyDeps): AcpProxyHandler {
     }
 
     try {
-      await acp.sendMessage(validated.value, messageText);
+      await sendMessageWithRecovery(
+        validated.value,
+        initialSession,
+        messageText
+      );
 
       await sessionStateStore.setLastMessage(validated.value, messageText);
       publisher.publishDelta(

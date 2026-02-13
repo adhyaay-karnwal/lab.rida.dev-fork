@@ -6,6 +6,7 @@ import {
   type RefObject,
   use,
   useEffect,
+  useLayoutEffect,
   useRef,
   useState,
 } from "react";
@@ -274,6 +275,7 @@ function ChatMessageList({
   const { getScrollRef, getIsNearBottomRef } = useChat();
   const scrollRef = getScrollRef();
   const isNearBottomRef = getIsNearBottomRef();
+  const contentRef = useRef<HTMLDivElement | null>(null);
 
   const handleScroll = () => {
     const { current: element } = scrollRef;
@@ -286,6 +288,43 @@ function ChatMessageList({
     isNearBottomRef.current = distanceFromBottom < SCROLL_THRESHOLD;
   };
 
+  useLayoutEffect(() => {
+    const scrollElement = scrollRef.current;
+    const contentElement = contentRef.current;
+    if (!(scrollElement && contentElement)) {
+      return;
+    }
+
+    let frameId = 0;
+    const scrollIfNearBottom = () => {
+      if (!isNearBottomRef.current) {
+        return;
+      }
+      scrollElement.scrollTo({ top: scrollElement.scrollHeight });
+    };
+    const scheduleScroll = () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      frameId = requestAnimationFrame(scrollIfNearBottom);
+    };
+
+    const resizeObserver = new ResizeObserver(() => {
+      scheduleScroll();
+    });
+    resizeObserver.observe(contentElement);
+    window.addEventListener("resize", scheduleScroll);
+    scheduleScroll();
+
+    return () => {
+      if (frameId) {
+        cancelAnimationFrame(frameId);
+      }
+      window.removeEventListener("resize", scheduleScroll);
+      resizeObserver.disconnect();
+    };
+  }, [scrollRef, isNearBottomRef]);
+
   return (
     <div
       className={messageList({ compact })}
@@ -293,7 +332,9 @@ function ChatMessageList({
       ref={scrollRef}
     >
       <div className="flex-1" />
-      <div className="contents">{children}</div>
+      <div className="contents" ref={contentRef}>
+        {children}
+      </div>
     </div>
   );
 }

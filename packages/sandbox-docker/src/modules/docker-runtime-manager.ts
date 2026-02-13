@@ -44,6 +44,7 @@ export class DockerRuntimeManager implements RuntimeManager {
       image: input.image,
       hostname: input.hostname,
       networkMode: input.networkId,
+      networkAliases: input.aliases,
       workdir: input.workdir,
       env: input.env,
       ports: (input.ports ?? []).map((port) => ({
@@ -65,27 +66,6 @@ export class DockerRuntimeManager implements RuntimeManager {
     } catch (startError) {
       await this.provider.removeContainer(runtimeId).catch(() => undefined);
       throw startError;
-    }
-
-    try {
-      const aliases = input.aliases ?? [];
-      if (aliases.length > 0) {
-        const isConnected = await this.provider.isConnectedToNetwork(
-          runtimeId,
-          input.networkId
-        );
-        if (isConnected) {
-          await this.provider.disconnectFromNetwork(runtimeId, input.networkId);
-        }
-        await this.provider.connectToNetwork(runtimeId, input.networkId, {
-          aliases,
-        });
-      }
-    } catch (networkError) {
-      await this.provider
-        .removeContainer(runtimeId, true)
-        .catch(() => undefined);
-      throw networkError;
     }
 
     return { runtimeId };

@@ -120,6 +120,20 @@ export class SessionLifecycleManager {
     );
   }
 
+  async buildAcpSessionConfig(
+    sessionId: string,
+    projectId: string
+  ): Promise<{
+    systemPrompt?: string;
+    mcpServers: NewSessionRequest["mcpServers"];
+  }> {
+    const systemPrompt = await this.buildSystemPrompt(sessionId, projectId);
+    return {
+      systemPrompt: systemPrompt ?? undefined,
+      mcpServers: this.buildMcpServers(sessionId),
+    };
+  }
+
   private async buildSystemPrompt(
     sessionId: string,
     projectId: string

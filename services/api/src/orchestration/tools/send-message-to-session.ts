@@ -2,6 +2,7 @@ import { tool } from "ai";
 import { z } from "zod";
 import type { AcpClient } from "../../acp/client";
 import { widelog } from "../../logging";
+import type { SessionLifecycleManager } from "../../managers/session-lifecycle.manager";
 import { findSessionById } from "../../repositories/session.repository";
 import { getErrorMessage } from "../../shared/errors";
 import type { SessionStateStore } from "../../state/session-state-store";
@@ -18,6 +19,7 @@ interface SendMessageToolContext {
   acp: AcpClient;
   publisher: Publisher;
   sessionStateStore: SessionStateStore;
+  sessionLifecycle: SessionLifecycleManager;
 }
 
 export function createSendMessageToSessionTool(
@@ -41,11 +43,11 @@ export function createSendMessageToSessionTool(
       try {
         await sendMessageToSession({
           sessionId,
-          sandboxSessionId: session.sandboxSessionId,
           content: message,
           acp: context.acp,
           publisher: context.publisher,
           sessionStateStore: context.sessionStateStore,
+          sessionLifecycle: context.sessionLifecycle,
         });
 
         return { success: true, sessionId };

@@ -35,8 +35,27 @@ interface ManagedTerminal {
 }
 
 const EVENT_BUFFER_CAP = 1024;
-const REQUEST_TIMEOUT_MS = 120_000;
+const DEFAULT_REQUEST_TIMEOUT_MS = 120_000;
+const SESSION_BOOTSTRAP_TIMEOUT_MS = 30_000;
+const PROMPT_TIMEOUT_MS = 10 * 60_000;
 const SHUTDOWN_GRACE_MS = 5000;
+const ALLOWED_TOOL_NAMES = new Set([
+  "bash",
+  "browser",
+  "containers",
+  "logs",
+  "restart_process",
+  "internal_url",
+  "public_url",
+  "Read",
+  "Write",
+  "Patch",
+  "Edit",
+  "Grep",
+  "Glob",
+  "gh",
+  "WebFetch",
+]);
 
 function isJsonRpcResponse(
   message: JsonRpcMessage
@@ -74,9 +93,82 @@ function getErrorMessage(error: unknown): string {
   return error instanceof Error ? error.message : String(error);
 }
 
+function toRecord(value: unknown): Record<string, unknown> | undefined {
+  if (typeof value !== "object" || value === null) {
+    return undefined;
+  }
+  return Object.fromEntries(Object.entries(value));
+}
+
+function isToolsListMethod(method: string): boolean {
+  return method === "tools/list";
+}
+
+function isToolsCallMethod(method: string): boolean {
+  return method === "tools/call";
+}
+
+function getToolNameFromCall(params: unknown): string | undefined {
+  const paramsRecord = toRecord(params);
+  if (!paramsRecord) {
+    return undefined;
+  }
+  const directName = paramsRecord.name;
+  if (typeof directName === "string") {
+    return directName;
+  }
+  const toolName = paramsRecord.toolName;
+  if (typeof toolName === "string") {
+    return toolName;
+  }
+  return undefined;
+}
+
+function createToolDeniedResponse(
+  id: string | number | null | undefined,
+  toolName: string | undefined
+): JsonRpcResponse {
+  const deniedToolName = toolName ?? "(missing)";
+  return {
+    jsonrpc: "2.0",
+    id: typeof id === "string" || typeof id === "number" ? id : 0,
+    error: {
+      code: -32_001,
+      message: `Tool not allowed by server policy: ${deniedToolName}`,
+    },
+  };
+}
+
+function filterToolsInResult(response: JsonRpcResponse): JsonRpcResponse {
+  const resultRecord = toRecord(response.result);
+  if (!(resultRecord && Array.isArray(resultRecord.tools))) {
+    return response;
+  }
+
+  const filteredTools = resultRecord.tools.filter((toolEntry) => {
+    const toolRecord = toRecord(toolEntry);
+    return (
+      !!toolRecord &&
+      typeof toolRecord.name === "string" &&
+      ALLOWED_TOOL_NAMES.has(toolRecord.name)
+    );
+  });
+
+  const sanitizedResult = {
+    ...resultRecord,
+    tools: filteredTools,
+  };
+
+  return {
+    ...response,
+    result: sanitizedResult,
+  };
+}
+
 export class AgentProcess {
   readonly serverId: string;
   private process: Subprocess | null = null;
+  private processHasExited = false;
   private readonly pendingRequests = new Map<string | number, PendingRequest>();
   private readonly eventBuffer: BufferedEvent[] = [];
   private readonly sseSubscribers = new Set<SseSubscriber>();
@@ -92,7 +184,7 @@ export class AgentProcess {
   }
 
   get isRunning(): boolean {
-    return this.process !== null && !this.process.killed;
+    return this.process !== null && !this.processHasExited;
   }
 
   get configOptions(): unknown {
@@ -109,6 +201,7 @@ export class AgentProcess {
     }
 
     this.workingDir = workingDir ?? "/workspaces";
+    this.processHasExited = false;
 
     this.process = spawn(
       ["npx", "-y", "@zed-industries/claude-code-acp@0.16.1"],
@@ -121,7 +214,37 @@ export class AgentProcess {
       }
     );
 
+    this.process.exited.then((exitCode) => {
+      this.handleProcessExit(exitCode);
+    });
+
     this.readStdout();
+  }
+
+  private handleProcessExit(exitCode: number): void {
+    this.processHasExited = true;
+    this.process = null;
+
+    for (const pendingRequest of this.pendingRequests.values()) {
+      clearTimeout(pendingRequest.timer);
+      pendingRequest.reject(
+        new Error(`Agent process exited with code ${exitCode}`)
+      );
+    }
+    this.pendingRequests.clear();
+  }
+
+  private getRequestTimeoutMs(method: string | undefined): number {
+    if (method === "initialize" || method === "session/new") {
+      return SESSION_BOOTSTRAP_TIMEOUT_MS;
+    }
+    if (method === "session/load") {
+      return SESSION_BOOTSTRAP_TIMEOUT_MS;
+    }
+    if (method === "session/prompt") {
+      return PROMPT_TIMEOUT_MS;
+    }
+    return DEFAULT_REQUEST_TIMEOUT_MS;
   }
 
   private async readStdout(): Promise<void> {
@@ -492,6 +615,18 @@ export class AgentProcess {
   }
 
   sendRequest(message: JsonRpcMessage): Promise<JsonRpcResponse> {
+    if (
+      typeof message.method === "string" &&
+      isToolsCallMethod(message.method)
+    ) {
+      const requestedTool = getToolNameFromCall(message.params);
+      if (!(requestedTool && ALLOWED_TOOL_NAMES.has(requestedTool))) {
+        return Promise.resolve(
+          createToolDeniedResponse(message.id, requestedTool)
+        );
+      }
+    }
+
     this.writeToStdin(message);
 
     if (message.id === undefined || message.id === null) {
@@ -499,14 +634,24 @@ export class AgentProcess {
     }
 
     const id = message.id;
-    return new Promise<JsonRpcResponse>((resolve, reject) => {
+    const timeoutMs = this.getRequestTimeoutMs(message.method);
+    const pending = new Promise<JsonRpcResponse>((resolve, reject) => {
       const timer = setTimeout(() => {
         this.pendingRequests.delete(id);
         reject(new Error(`Request ${id} timed out`));
-      }, REQUEST_TIMEOUT_MS);
+      }, timeoutMs);
 
       this.pendingRequests.set(id, { resolve, reject, timer });
     });
+
+    if (
+      typeof message.method === "string" &&
+      isToolsListMethod(message.method)
+    ) {
+      return pending.then((response) => filterToolsInResult(response));
+    }
+
+    return pending;
   }
 
   /** Write a JSON-RPC response to stdin without waiting for a reply. */
@@ -571,6 +716,7 @@ export class AgentProcess {
     }
 
     this.process = null;
+    this.processHasExited = true;
     this.sseSubscribers.clear();
 
     for (const terminal of this.terminals.values()) {

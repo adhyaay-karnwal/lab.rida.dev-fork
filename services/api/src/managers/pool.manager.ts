@@ -19,6 +19,8 @@ interface PoolStats {
   target: number;
 }
 
+const POOL_MAX_FILL_BATCH = 3;
+
 /**
  * Computes exponential backoff duration with a ceiling.
  */
@@ -93,7 +95,6 @@ export class PoolManager {
       );
       widelog.set("project_id", projectId);
       widelog.time.start("duration_ms");
-      let warmed = false;
 
       try {
         const containerDefinitions = await findContainersByProjectId(projectId);
@@ -116,18 +117,15 @@ export class PoolManager {
 
         await this.sessionLifecycle.initializeSession(session.id, projectId);
 
-        try {
-          await this.browserService.service.warmUpBrowser(session.id);
-          warmed = true;
-        } catch {
-          warmed = false;
-        }
+        this.browserService.service
+          .warmUpBrowser(session.id)
+          .catch(() => undefined);
 
-        widelog.set("warmed", warmed);
+        widelog.set("warmup_started", true);
         widelog.set("outcome", "success");
         return session;
       } catch (error) {
-        widelog.set("warmed", warmed);
+        widelog.set("warmup_started", false);
         widelog.set("outcome", "error");
         widelog.errorFields(error);
         return null;
@@ -184,25 +182,40 @@ export class PoolManager {
   }
 
   /**
-   * Attempts to create one pooled session. Returns the updated consecutive failure count.
-   * On success, resets failures to 0. On failure, increments and applies backoff delay.
+   * Fills missing pooled sessions in parallel up to a small batch size.
+   * Returns created count and updated failure count.
    */
-  private async fillOne(
+  private async fillBatch(
     projectId: string,
+    missingCount: number,
     consecutiveFailures: number
-  ): Promise<number> {
-    const session = await this.createPooledSession(projectId);
-    if (!session) {
-      const failures = consecutiveFailures + 1;
+  ): Promise<{ created: number; failures: number }> {
+    const batchSize = Math.max(1, Math.min(POOL_MAX_FILL_BATCH, missingCount));
+    const attempts = await Promise.all(
+      Array.from({ length: batchSize }, () =>
+        this.createPooledSession(projectId)
+      )
+    );
+
+    let created = 0;
+    let failures = consecutiveFailures;
+    for (const session of attempts) {
+      if (session) {
+        created++;
+        failures = 0;
+        continue;
+      }
+
+      failures += 1;
       const delay = computeBackoffMs(
         failures,
         TIMING.POOL_BACKOFF_BASE_MS,
         TIMING.POOL_BACKOFF_MAX_MS
       );
       await new Promise((resolve) => setTimeout(resolve, delay));
-      return failures;
     }
-    return 0;
+
+    return { created, failures };
   }
 
   /**
@@ -213,10 +226,13 @@ export class PoolManager {
     excess: number
   ): Promise<number> {
     const sessionsToRemove = await findPooledSessions(projectId, excess);
-    for (const session of sessionsToRemove) {
-      await this.sessionLifecycle.cleanupSession(session.id);
-    }
-    return sessionsToRemove.length;
+    const cleanupResults = await Promise.allSettled(
+      sessionsToRemove.map((session) =>
+        this.sessionLifecycle.cleanupSession(session.id)
+      )
+    );
+    return cleanupResults.filter((result) => result.status === "fulfilled")
+      .length;
   }
 
   /**
@@ -253,17 +269,24 @@ export class PoolManager {
           }
 
           if (currentSize < targetSize) {
-            consecutiveFailures = await this.fillOne(
+            const missingCount = targetSize - currentSize;
+            const fillResult = await this.fillBatch(
               projectId,
+              missingCount,
               consecutiveFailures
             );
-            if (consecutiveFailures === 0) {
-              sessionsCreated++;
-            } else {
+            consecutiveFailures = fillResult.failures;
+            sessionsCreated += fillResult.created;
+            if (fillResult.created === 0) {
               widelog.count("error_count");
               widelog.set(
                 `errors.fill_attempt_${iterationIndex}`,
-                `creation failed, consecutive_failures=${consecutiveFailures}`
+                `batch fill failed, missing=${missingCount}, consecutive_failures=${consecutiveFailures}`
+              );
+            } else {
+              widelog.set(
+                `fill_attempt_${iterationIndex}.created`,
+                fillResult.created
               );
             }
           } else {

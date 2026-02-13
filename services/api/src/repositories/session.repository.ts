@@ -53,18 +53,18 @@ export async function createSession(
 export function updateSessionFields(
   sessionId: string,
   fields: {
-    sandboxSessionId?: string;
-    workspaceDirectory?: string;
+    sandboxSessionId?: string | null;
+    workspaceDirectory?: string | null;
     title?: string;
   }
 ): Promise<Session | null> {
   return db.transaction(async (tx) => {
     const setFields: Record<string, unknown> = { updatedAt: new Date() };
 
-    if (fields.sandboxSessionId) {
+    if (fields.sandboxSessionId !== undefined) {
       setFields.sandboxSessionId = fields.sandboxSessionId;
     }
-    if (fields.workspaceDirectory) {
+    if (fields.workspaceDirectory !== undefined) {
       setFields.workspaceDirectory = fields.workspaceDirectory;
     }
     if (fields.title !== undefined) {
