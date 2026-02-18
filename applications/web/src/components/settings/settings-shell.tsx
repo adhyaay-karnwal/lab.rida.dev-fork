@@ -5,6 +5,7 @@ import { NavTabs, type TabItem } from "@/components/nav-tabs";
 
 const settingsTabs: TabItem[] = [
   { label: "GitHub", href: "/settings/github" },
+  { label: "Claude Code", href: "/settings/claude-code" },
   { label: "Providers", href: "/settings/providers" },
   {
     label: "Projects",

@@ -1,5 +1,6 @@
 const settingsTabs = [
   { label: "GitHub", href: "/settings/github" },
+  { label: "Claude Code", href: "/settings/claude-code" },
   { label: "Providers", href: "/settings/providers" },
   { label: "Projects", href: "/settings/projects" },
   { label: "API Keys", href: "/settings/api-keys" },
