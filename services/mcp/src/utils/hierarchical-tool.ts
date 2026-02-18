@@ -28,14 +28,14 @@ export interface ToolResult {
   content: Content[];
 }
 
-export interface CommandNode {
+export interface CommandNode<
+  TParams extends z.ZodRawShape | undefined = z.ZodRawShape | undefined,
+  TArgs extends Record<string, unknown> = Record<string, unknown>,
+> {
   description: string;
   children?: Record<string, CommandNode>;
-  params?: z.ZodRawShape;
-  handler?: (
-    args: Record<string, unknown>,
-    context: CommandContext
-  ) => Promise<ToolResult>;
+  params?: TParams;
+  handler?(args: TArgs, context: CommandContext): Promise<ToolResult>;
 }
 
 interface CommandContext {
@@ -54,6 +54,36 @@ interface HierarchicalToolConfig {
     args: Record<string, unknown>,
     extra: ToolExtra
   ) => { sessionId: string } | { error: string };
+}
+
+export function defineCommand<TParams extends z.ZodRawShape>(node: {
+  description: string;
+  params: TParams;
+  children?: Record<string, CommandNode>;
+  handler?: (
+    args: z.output<z.ZodObject<TParams>>,
+    context: CommandContext
+  ) => Promise<ToolResult>;
+}): CommandNode<TParams, z.output<z.ZodObject<TParams>>>;
+export function defineCommand(node: {
+  description: string;
+  params?: undefined;
+  children?: Record<string, CommandNode>;
+  handler?: (
+    args: Record<string, unknown>,
+    context: CommandContext
+  ) => Promise<ToolResult>;
+}): CommandNode;
+export function defineCommand(node: {
+  description: string;
+  params?: z.ZodRawShape;
+  children?: Record<string, CommandNode>;
+  handler?: (
+    args: Record<string, unknown>,
+    context: CommandContext
+  ) => Promise<ToolResult>;
+}): CommandNode {
+  return node;
 }
 
 function parseCommandPath(input: string): string[] {
