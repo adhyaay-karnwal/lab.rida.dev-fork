@@ -31,6 +31,26 @@ const SessionTaskSchema = z.object({
   position: z.number(),
 });
 
+const MessagePartSchema = z.discriminatedUnion("type", [
+  z.object({
+    type: z.literal("text"),
+    text: z.string(),
+  }),
+  z.object({
+    type: z.literal("tool_call"),
+    id: z.string(),
+    name: z.string(),
+    input: z.record(z.string(), z.unknown()),
+    status: z.enum(["in_progress", "completed", "error"]),
+  }),
+  z.object({
+    type: z.literal("tool_result"),
+    tool_call_id: z.string(),
+    output: z.string().optional(),
+    error: z.string().optional(),
+  }),
+]);
+
 const SessionSchema = z.object({
   id: z.string(),
   projectId: z.string(),
@@ -189,8 +209,17 @@ export const schema = defineSchema({
 
     sessionMessages: defineChannel({
       path: "session/:uuid/messages",
-      snapshot: z.array(z.never()),
-      default: [],
+      snapshot: z.object({
+        messages: z.array(
+          z.object({
+            id: z.string(),
+            role: z.enum(["user", "assistant"]),
+            parts: z.array(MessagePartSchema),
+          })
+        ),
+        questionRequests: z.array(z.tuple([z.string(), z.string()])),
+      }),
+      default: { messages: [], questionRequests: [] },
       event: z.object({
         id: z.string(),
         role: z.enum(["user", "assistant"]),

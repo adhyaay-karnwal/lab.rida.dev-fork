@@ -14,6 +14,7 @@ import {
   loadSessionChangedFiles,
   loadSessionContainers,
   loadSessionLogs,
+  loadSessionMessages,
   loadSessionMetadata,
   loadSessions,
   loadSessionTasks,
@@ -103,7 +104,12 @@ export function createWebSocketHandlers(deps: WebSocketHandlerDeps) {
       },
     },
     sessionMessages: {
-      getSnapshot: () => Promise.resolve([]),
+      getSnapshot: ({ params }) => {
+        if (!params.uuid) {
+          throw new ValidationError("Missing uuid parameter");
+        }
+        return loadSessionMessages(params.uuid);
+      },
     },
     sessionAcpEvents: {
       getSnapshot: ({ params }) => {

@@ -162,7 +162,7 @@ function ChatProvider({
       getModelId: () => modelIdRef.current,
       setModelId: (value: string) => {
         setModelId(value);
-        void onModelChange?.(value);
+        onModelChange?.(value);
       },
     };
   }

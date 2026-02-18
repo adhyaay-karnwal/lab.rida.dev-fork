@@ -52,10 +52,7 @@ export function createMultiplayerProvider<S extends Schema>(schema: S) {
   }
 
   function MultiplayerProvider({ config, children }: ProviderProps) {
-    const connection = useMemo(
-      () => new ConnectionManager(config),
-      [config.url, config]
-    );
+    const connection = useMemo(() => new ConnectionManager(config), [config]);
 
     return (
       <JotaiProvider>

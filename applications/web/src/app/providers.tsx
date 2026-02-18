@@ -52,6 +52,10 @@ function AuthGate({ children }: { children: ReactNode }) {
 
 export function Providers({ children, fallback = {} }: ProvidersProps) {
   const wsUrl = process.env.NEXT_PUBLIC_WS_URL;
+  const multiplayerConfig = useMemo(
+    () => (wsUrl ? { url: wsUrl } : null),
+    [wsUrl]
+  );
 
   const swrValue = useMemo(() => ({ ...SWR_CONFIG, fallback }), [fallback]);
 
@@ -61,7 +65,7 @@ export function Providers({ children, fallback = {} }: ProvidersProps) {
     </SWRConfig>
   );
 
-  if (!wsUrl) {
+  if (!multiplayerConfig) {
     return (
       <MultiplayerEnabledContext value={false}>
         {swrContent}
@@ -71,7 +75,7 @@ export function Providers({ children, fallback = {} }: ProvidersProps) {
 
   return (
     <MultiplayerEnabledContext value={true}>
-      <MultiplayerProvider config={{ url: wsUrl }}>
+      <MultiplayerProvider config={multiplayerConfig}>
         {swrContent}
       </MultiplayerProvider>
     </MultiplayerEnabledContext>

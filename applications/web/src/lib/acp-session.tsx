@@ -379,6 +379,31 @@ export function createAcpEventTranslator(): AcpEventTranslator {
     return events;
   };
 
+  const translateSessionUpdate = (
+    update: Record<string, unknown>,
+    sequence: number
+  ): AcpEvent[] => {
+    switch (update.sessionUpdate) {
+      case "agent_message_chunk": {
+        const content = toRecord(update.content);
+        if (!content) {
+          return [];
+        }
+        const text = typeof content.text === "string" ? content.text : "";
+        const type = typeof content.type === "string" ? content.type : "text";
+        return handleMessageChunk({ text, type }, sequence);
+      }
+      case "tool_call":
+        return handleToolCallEvent(update, sequence);
+      case "tool_call_update":
+        return handleToolCallUpdateEvent(update, sequence);
+      case "user_message":
+        return handleUserMessageEvent(update, sequence);
+      default:
+        return [];
+    }
+  };
+
   const translate = (
     parsed: Record<string, unknown>,
     sequence: number
@@ -396,29 +421,7 @@ export function createAcpEventTranslator(): AcpEventTranslator {
       return [];
     }
 
-    if (update.sessionUpdate === "agent_message_chunk") {
-      const content = toRecord(update.content);
-      if (!content) {
-        return [];
-      }
-      const text = typeof content.text === "string" ? content.text : "";
-      const type = typeof content.type === "string" ? content.type : "text";
-      return handleMessageChunk({ text, type }, sequence);
-    }
-
-    if (update.sessionUpdate === "tool_call") {
-      return handleToolCallEvent(update, sequence);
-    }
-
-    if (update.sessionUpdate === "tool_call_update") {
-      return handleToolCallUpdateEvent(update, sequence);
-    }
-
-    if (update.sessionUpdate === "user_message") {
-      return handleUserMessageEvent(update, sequence);
-    }
-
-    return [];
+    return translateSessionUpdate(update, sequence);
   };
 
   return { reset, translate, getState, setState };

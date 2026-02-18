@@ -1,8 +1,10 @@
 import type { AppSchema } from "@lab/multiplayer-sdk";
-import { CURRENT_REPLAY_PARSER_VERSION } from "../acp/replay-checkpoint";
+import {
+  getLastAssistantPreview,
+  projectSessionMessages,
+} from "../acp/session-messages";
 import type { BrowserService } from "../browser/browser-service";
 import type { LogMonitor } from "../monitors/log.monitor";
-import { getReplayCheckpoint } from "../repositories/acp-replay-checkpoint.repository";
 import { getAgentEvents } from "../repositories/agent-event.repository";
 import { findPortsByContainerId } from "../repositories/container-port.repository";
 import { getSessionContainersWithDetails } from "../repositories/container-session.repository";
@@ -63,15 +65,7 @@ export function loadSessionChangedFiles() {
 }
 
 export async function loadSessionAcpEvents(sessionId: string) {
-  const checkpoint = await getReplayCheckpoint(sessionId);
-  const compatibleCheckpoint =
-    checkpoint && checkpoint.parserVersion === CURRENT_REPLAY_PARSER_VERSION
-      ? checkpoint
-      : null;
-  const events = await getAgentEvents(
-    sessionId,
-    compatibleCheckpoint?.lastSequence
-  );
+  const events = await getAgentEvents(sessionId);
 
   const serializedEvents = events.flatMap((event) => {
     if (typeof event.eventData !== "object" || event.eventData === null) {
@@ -86,18 +80,15 @@ export async function loadSessionAcpEvents(sessionId: string) {
     ];
   });
 
-  if (!compatibleCheckpoint) {
-    return { checkpoint: null, events: serializedEvents };
-  }
-
   return {
-    checkpoint: {
-      parserVersion: compatibleCheckpoint.parserVersion,
-      lastSequence: compatibleCheckpoint.lastSequence,
-      replayState: compatibleCheckpoint.replayState,
-    },
+    checkpoint: null,
     events: serializedEvents,
   };
+}
+
+export async function loadSessionMessages(sessionId: string) {
+  const events = await getAgentEvents(sessionId);
+  return projectSessionMessages(events);
 }
 
 export function loadSessionTasks(sessionId: string) {
@@ -114,10 +105,11 @@ export async function loadSessionMetadata(
 ) {
   const session = await findSessionById(sessionId);
   const title = session?.title ?? "";
-  const [inferenceStatus, storedLastMessage] = await Promise.all([
+  const [inferenceStatus, messageSnapshot] = await Promise.all([
     sessionStateStore.getInferenceStatus(sessionId),
-    sessionStateStore.getLastMessage(sessionId),
+    loadSessionMessages(sessionId),
   ]);
+  const storedLastMessage = getLastAssistantPreview(messageSnapshot);
 
   return {
     title,
@@ -167,7 +159,8 @@ export function createSnapshotLoaders(
       session
         ? Promise.resolve(loadSessionLogs(session, logMonitor))
         : Promise.resolve({ sources: [], recentLogs: {} }),
-    sessionMessages: () => Promise.resolve([]),
+    sessionMessages: (session) =>
+      session ? loadSessionMessages(session) : Promise.resolve(null),
     sessionAcpEvents: (session) =>
       session ? loadSessionAcpEvents(session) : Promise.resolve(null),
     sessionBrowserState: (session) =>
